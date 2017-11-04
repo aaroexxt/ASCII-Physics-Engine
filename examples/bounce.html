@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bounce Physics!</title>
+        <script src="../dist/minified/physics.min.js"></script>
+        <script src="../dist/minified/helpLib.min.js"></script>
+        <script src="../dist/minified/stats.min.js"></script>
+        <meta charset="utf-8">
+    </head>
+    <body style="margin: 0; height: 100%; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+        <pre id="phys"></pre>
+        <script>
+            Physics.element = ID("phys"); //Initialize physics
+            Physics.init();
+
+            var xdir = 1; //Set up direction vars
+            var ydir = 1;
+
+            var box = new Physics.shape("box",{height: 2, gravity: false, width: 2, color: "red", character: "◘", x: Math.floor(Math.random() * Physics.width), y: Math.floor(Math.random() * Physics.height)}); //Create box shape with random placement
+
+            var loop = new Physics.renderLoop({fps: 60, collision: false, clear: false, onFrame: function() { //Set up loop with onFrame function
+
+                box.x+=xdir; //Change box's position
+                box.y+=ydir;
+
+                if (box.x+box.width >= Physics.width) { //Check if box is hitting wall and if it is, reverse it's direction
+                    xdir = -1;
+                } else if (box.x <= 0) {
+                    xdir = 1;
+                }
+                if (box.y+box.height >= Physics.height) {
+                    ydir = -1;
+                } else if (box.y <= 0) {
+                    ydir = 1;
+                }
+
+            }},box);
+            loop.start(); //Start render loop
+        </script>
+    </body>
+</html>

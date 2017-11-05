@@ -2,7 +2,7 @@
 <html>
     <head>
         <title>Bounce Physics!</title>
-        <script src="../dist/minified/physics.min.js"></script>
+        <script src="../dist/unminified/physics.js"></script>
         <script src="../dist/minified/helpLib.min.js"></script>
         <script src="../dist/minified/stats.min.js"></script>
         <meta charset="utf-8">
@@ -12,13 +12,20 @@
         <script>
             Physics.element = ID("phys"); //Initialize physics
             Physics.init();
+            
+            var stats = new Stats(); //initialize stats counter in top left
+            stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+            document.body.appendChild( stats.dom );
+            stats.dom.style.position = "absolute";
+            stats.dom.style.left = (window.innerWidth-stats.dom.offsetWidth)+"px";
 
             var xdir = 1; //Set up direction vars
             var ydir = 1;
 
-            var box = new Physics.shape("box",{height: 2, gravity: false, width: 2, color: "red", character: "◘", x: Math.floor(Math.random() * Physics.width), y: Math.floor(Math.random() * Physics.height)}); //Create box shape with random placement
+            var box = new Physics.shape("box",{height: 1, gravity: false, width: 1, replaceWithSpace: true, color: "red", character: "◘", x: Math.floor(Math.random() * Physics.width), y: Math.floor(Math.random() * Physics.height)}); //Create box shape with random placement
 
             var loop = new Physics.renderLoop({fps: 60, collision: false, clear: false, onFrame: function() { //Set up loop with onFrame function
+                stats.begin();
 
                 box.x+=xdir; //Change box's position
                 box.y+=ydir;
@@ -34,6 +41,7 @@
                     ydir = 1;
                 }
 
+                stats.end();
             }},box);
             loop.start(); //Start render loop
         </script>

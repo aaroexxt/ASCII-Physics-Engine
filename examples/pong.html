@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bounce Physics!</title>
+        <script src="../dist/unminified/physics.js"></script>
+        <script src="../dist/minified/helpLib.min.js"></script>
+        <script src="../dist/minified/stats.min.js"></script>
+        <meta charset="utf-8">
+    </head>
+    <body style="margin: 0; height: 100%; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+        <pre id="phys"></pre>
+        <script>
+            Physics.element = ID("phys");
+            Physics.init();
+
+            var ball = new Physics.shape("box",{height: 2, gravity: false, width: 2, character: "*", x: 5, y: 5});
+            var l_paddle = new Physics.shape("box",{height: 10, gravity: false, width: 2, enableRight: false, enableLeft: false, character: "|", x: 2, y:0});
+            var r_paddle = new Physics.shape("box",{height: 10, gravity: false, width: 2, enableRight: false, enableLeft: false, character: "|", x: Physics.width-3, y:0});
+
+            var ballSpeed = 0.5;
+            var xdir = ballSpeed; //Set up direction vars for ball
+            var ydir = ballSpeed;
+            var lpaddleoldy;
+
+            var stats = new Stats(); //initialize stats counter in top left
+            stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+            document.body.appendChild( stats.dom );
+            stats.dom.style.position = "absolute";
+            stats.dom.style.left = (window.innerWidth-stats.dom.offsetWidth)+"px";
+
+            var loop = new Physics.renderLoop({fps: 60, collision: true, onFrame: function(loop) {
+
+                stats.begin();
+
+                ball.x+=xdir; //Change ball's position
+                ball.y+=ydir;
+
+                if (ball.x+ball.width >= Physics.width) { //Check if ball is hitting wall and if it is, reverse it's direction
+                    xdir = -ballSpeed;
+                } else if (ball.x <= 0) {
+                    xdir = ballSpeed;
+                }
+                if (ball.y+ball.height >= Physics.height) {
+                    ydir = -ballSpeed;
+                } else if (ball.y <= 0) {
+                    ydir = ballSpeed;
+                }
+
+                r_paddle.moveTowardsObject(ball,0.7); //set right paddle to be controlled by computer, moving towards ball at a speed of 0.7 chars a frame
+
+                if (ball.x == 0 && (ball.collisionRight == false && ball.collisionLeft == false && ball.collisionBottom == false)) {
+                    console.log("BNS")
+                    alert("Computer Won");
+                    ball.x = Physics.width/2;
+                    ball.y = Physics.height/2;
+                    ballSpeed = 0.5;
+                    xdir = ballSpeed;
+                    ydir = ballSpeed;
+                }
+                if (ball.x<= 1 || ball.x >= Physics.width-2) {
+                    var inc = Math.abs(((l_paddle.y-lpaddleoldy)/2));
+                    if (inc > 3) {
+                        ballSpeed+=inc;
+                    } else {
+                        ballSpeed-=0.2;
+                    }
+                    if (ballSpeed > 1.5) {
+                        ballSpeed = 1.5;
+                    } else if (ballSpeed < 0) {
+                        ballSpeed = 0.5;
+                    }
+                }
+
+                if (ball.x == Physics.width && (ball.collisionRight == false && ball.collisionLeft == false && ball.collisionBottom == false)) {
+                    console.log("BNS")
+                    alert("Player Won");
+                    ball.x = Physics.width/2;
+                    ball.y = Physics.height/2;
+                    ballSpeed = 0.5;
+                    xdir = ballSpeed;
+                    ydir = ballSpeed;
+                }
+
+                lpaddleoldy = l_paddle.y;
+
+                stats.end();
+
+            }},ball,l_paddle,r_paddle);
+
+            l_paddle.controlMouse(); //set left paddle to be controlled by player
+
+            loop.start();
+        </script>
+    </body>
+</html>

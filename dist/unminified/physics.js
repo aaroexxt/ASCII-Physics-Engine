@@ -28,7 +28,7 @@ var Physics = {
     enableDeltaTimeCalculations: true, //can help mitigate low framerate by helping to keep jumps consistent
     simpleDeltaCalculations: true,
     forceAverageDelta: false,
-    moreEfficientPhysics: false, //beta and doesn't work yet
+    moreEfficientPhysics: true, //beta and kind of works, implements AABB collision
     //weightPerCharacter: 0.1, //to be implemented
     //GENERAL CONSTANTS
     debugMode: false,
@@ -59,6 +59,10 @@ var Physics = {
             this.y = options.y || 0;
             this.mesh = [];
             this.colorMesh = [];
+            this.replaceWithSpace = options.replaceWithSpace || false;
+            if (typeof this.replaceWithSpace == "undefined") {
+                this.replaceWithSpace = false;
+            }
             this.shapeArrayNum = Physics.renderLoopShapes.length;
             Physics.renderLoopShapes[Physics.renderLoopShapes.length] = this;
             this.color = options.color || "black";
@@ -81,6 +85,23 @@ var Physics = {
             if (typeof this.overrideRenderLimit === "undefined") {
                 this.overrideRenderLimit = false;
             }
+
+            if (typeof options.enableUp == "undefined") {
+                options.enableUp = true;
+            }
+            if (typeof options.enableDown == "undefined") {
+                options.enableDown = true;
+            }
+            if (typeof options.enableLeft == "undefined") {
+                options.enableLeft = true;
+            }
+            if (typeof options.enableRight == "undefined") {
+                options.enableRight = true;
+            }
+            this.enableUp = options.enableUp;
+            this.enableDown = options.enableDown;
+            this.enableLeft = options.enableLeft;
+            this.enableRight = options.enableRight;
 
             this.pointTable = [];
             this.updPointTable = [];
@@ -370,8 +391,13 @@ var Physics = {
                                     } else {
                                         for (var b=0; b<mesh[j].length; b++) { //for every character in mesh
                                             try {
-                                                Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].replaceAt(b+x,arguments[i].mesh[j][b]);
-                                                Physics.charsPerFrame++;
+                                                //console.log(Physics.renderBuffer[j+y][b+x])
+                                                if (arguments[i].replaceWithSpace && Physics.renderBuffer[j+y][b+x] != " ") {
+                                                    Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].replaceAt(b+x," ");
+                                                } else {
+                                                    Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].replaceAt(b+x,arguments[i].mesh[j][b]);
+                                                    Physics.charsPerFrame++;
+                                                }
                                             } catch(e) {
                                                 console.error("Error while rendering physics buffer for shape "+arguments[i].type+", UUID "+arguments[i].UUID+", x: "+(b+x)+", y: "+(j+y)+", error: "+e);
                                             }
@@ -489,7 +515,7 @@ var Physics = {
                         Physics.calculate_collisions_narrow(Physics.inefficientArr[i],Physics.inefficientArr[i+1]);
                     } else {
                         console.error("COLL_NARROW: Physics coll i+1 val missing, calculating with previous argument");
-                        Physics.calculate_collisions_narrow([i],Physics.inefficientArr[i-1]);
+                        Physics.calculate_collisions_narrow(Physics.innefficientArr[i],Physics.inefficientArr[i-1]);
                     }
                 }
                 if (Physics.debugMode) {
@@ -620,14 +646,19 @@ var Physics = {
         }
     },
     init: function() {
-        setTimeout(function(){
             //console.clear();
+            mouseOffsetX = Physics.element.offsetLeft;
+            mouseOffsetY = Physics.element.offsetTop+100;
+            document.body.onmousedown = function() {
+                mouseDown = true;
+            }
+            document.body.onmouseup = function() {
+                mouseDown = false;
+            }
             console.typeable("debugon","console.log(\"Type debugon into the console to enable debug mode. (Warning: there is about 1000 debug messages outputted per second)\");","console.log(\"Debug mode active.\"); Physics.debugMode = true;");
             console.typeable("debugoff","console.log(\"Type debugoff into the console to disable debug mode.\");","console.log(\"Debug mode disabled.\"); Physics.debugMode = false;");
-            console.typeable("collisioncheck","console.log(\"Type collisioncheck into the console to test collisions. (mostly for me) Note that the object being tested must be named \'player\'.\");","console.log(\"Testing collisions...\"); player.y = 1000; player.x = -1000; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft); setTimeout(function(){player.y = 10; player.x = 10; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player still colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft);},100);");
             console.typeable("debug2s","console.log('Type debug2s into the console to perform auto-test of code for 2s and then stop it. (Mostly for debugging broken things in render loop)');","console.clear(); fpsInterval = 0; debugon; setFPS(1); setTimeout(function(){fpsInterval = 0; debugoff;},2000);");
             //console.typeable("stop","console.log('Type stop into the console to stop the game.');","fpsInterval = 0;")
-        },500);
 
         Physics.element.style.lineHeight = String(Physics.lineHeight);
         Physics.height = Math.round(window.innerHeight*(Physics.lineHeight-0.53));
@@ -657,14 +688,16 @@ var Physics = {
         opts.queueNum = Physics.renderLoopNext;
         Physics.renderLoopPasts[opts.queueNum] = Date.now();
         this.options = opts;
-        var _this = this;
 
         this._this = this;
+        this.runLoop = true;
         this.args = args;
         this.firstRun = true;
+        var _this = this;
 
         function createRenderLoop(_this, queuenum, args) { //this is going to get a little twisted to be able to pass variables from this to setinterval
-            _this.loopNum = setInterval(function(){
+            _this.renderFunction = (function(){
+                if (_this.runLoop) {requestAnimationFrame(_this.renderFunction);}
                 var fpsInterval = 1000/_this.options.fps;
                 var now = Date.now();
                 var then = Physics.renderLoopPasts[queuenum];
@@ -697,32 +730,37 @@ var Physics = {
                     renderstr+=");";
                     collisionstr+=");";
                     if (Physics.debugMode) {console.log(renderstr);}
-                    eval(renderstr);
                     //console.log(JSON.stringify(_this.options))
                     if (_this.options.collision) {
                         eval(collisionstr);
                     }
+                    eval(renderstr);
                     if (_this.options.executeOnFrame) {
                         try {
-                            _this.options.onFrame();
+                            _this.options.onFrame(_this);
                         } catch(e) {
                             _this.options.executeOnFrame = false;
                             console.error("Error executing onFrame function for renderLoop. E: "+e+", RENDERLOOP_LOOP");
                         }
                     }
                 }
-            },0);
+            });
+            requestAnimationFrame(function(){
+                _this.renderFunction();
+            });
         }
         //createRenderLoop(this, this.options.queueNum, this.args);
         this.start = function() {
+            this.runLoop = true;
             createRenderLoop(this, this.options.queueNum, this.args); //pass the args to the function
         }
         this.stop = function() {
-            try{
+            /*try{
                 clearInterval(this.loopNum);
             } catch(e) {
                 console.error("Error stopping renderLoop. E: "+e+", RENDERLOOP_MAIN")
-            }
+            }*/
+            this.runLoop = false;
         }
         Physics.renderLoopNext++;
 
@@ -847,12 +885,35 @@ Physics.shape.prototype.regenColorMesh = function(newColor) {
     }
 }
 
+Physics.shape.prototype.moveTowardsObject = function(object,maxspeed) {
+    maxspeed = Math.abs(maxspeed);
+    var diffx = -((this.x + ((this.width || this.length) / 2)) - object.x);
+    if(diffx < 0 && diffx < -maxspeed) { // max speed left
+        diffx = maxspeed;
+    } else if (diffx > 0 && diffx > maxspeed) { // max speed right
+        diffx = maxspeed;
+    }
+    if ((this.enableRight && diffx > 0) || (this.enableLeft && diffx < 0)) {
+        this.x+=diffx;
+    }
+
+    var diffy = -((this.y + (this.height / 2)) - object.y);
+    if(diffy < 0 && diffx < -maxspeed) { // max speed left
+        diffy = maxspeed;
+    } else if (diffy > 0 && diffy > maxspeed) { // max speed right
+        diffy = maxspeed;
+    }
+    if ((this.enableUp && diffy < 0) || (this.enableDown && diffy > 0)) {
+        this.y+=diffy;
+    }
+}
+
 var play = [];
 var timeSinceUpKey;
 var timeBetweenJumps = 900;
 var lastKeyPress = Date.now();
 var map = {};
-Physics.shape.prototype.control = function() {
+Physics.shape.prototype.controlGravity = function() {
     play = this;
     window.onkeydown = window.onkeyup = function(e) {
         var e = window.event ? window.event : e;
@@ -860,7 +921,7 @@ Physics.shape.prototype.control = function() {
         if (map["37"] || map["38"] || map["39"] || map["40"]) {
             e.preventDefault();
         }
-        if (map["38"]) { //up
+        if (map["38"] && play.enableUp) { //up
             timeSinceUpKey = Date.now()-lastKeyPress;
             if (play.momentumY < Physics.gravitationalConstant && timeSinceUpKey > timeBetweenJumps) {
                 lastKeyPress = Date.now();
@@ -868,23 +929,29 @@ Physics.shape.prototype.control = function() {
                 setTimeout(function(){
                     play.momentumY = -3;
                 },50);
-            } else if (lvlnum == 0 || lvlnum == "title") {
-                play.momentumY = -2.5;
             }
+            try {
+                if (lvlnum == 0 || lvlnum == "title") {
+                    play.momentumY = -2.5;
+                }
+            }catch(e){}
         }
-        if (map["40"]) { //down
+        if (map["40"] && play.enableDown) { //down
             if (play.y+play.height == Physics.height || play.momentumY < Physics.gravitationalConstant) {
                 play.momentumY = 3;
-            } else if (lvlnum == 0 || lvlnum == "title") {
-                play.momentumY = 3;
             }
+            try {
+                if (lvlnum == 0 || lvlnum == "title") {
+                    play.momentumY = 3;
+                }
+            } catch(e){}
         }
-        if (map["37"]) { //left
+        if (map["37"] && play.enableLeft) { //left
             if (play.momentumX < Physics.terminalVelocity && play.momentumX > -Physics.terminalVelocity) {
                 play.momentumX = -3;
             }
         }
-        if (map["39"]) { //right
+        if (map["39"] && play.enableRight) { //right
             if (play.momentumX < Physics.terminalVelocity && play.momentumX > -Physics.terminalVelocity) {
                 play.momentumX = 3;
             }
@@ -892,3 +959,105 @@ Physics.shape.prototype.control = function() {
     }
 }
 
+var playraw = [];
+var mapraw = {};
+Physics.shape.prototype.controlRaw = function(multiplier) {
+    playraw = this;
+    window.onkeydown = window.onkeyup = function(e) {
+        var e = window.event ? window.event : e;
+        map[e.keyCode] = e.type == 'keydown';
+        if (map["37"] || map["38"] || map["39"] || map["40"]) {
+            e.preventDefault();
+        }
+        if (map["38"] && playraw.enableUp) { //up
+            playraw.y-=1*multiplier;
+        }
+        if (map["40"] && playraw.enableDown) { //down
+            playraw.y+=1*multiplier;
+        }
+        if (map["37"] && playraw.enableLeft) { //left
+            playraw.x-=1*multiplier;
+        }
+        if (map["39"] && playraw.enableRight) { //right
+            playraw.x+=1*multiplier;
+        }
+    }
+}
+
+var mousePos, mouseOffsetX, mouseOffsetY;
+var mouseDown = false;
+var relMousePos = {x: 0, y: 0}
+var playmouse = [];
+
+Physics.shape.prototype.controlMouse = function() {
+    playmouse = this;
+    document.onmousemove = function(e) {
+        handleMouseMove(e);
+        if (playmouse.enableUp) {
+            if (relMousePos.y<=playmouse.y) {
+                playmouse.y = relMousePos.y;
+            }
+        }
+        if (playmouse.enableDown) {
+            if (relMousePos.y>=playmouse.y) {
+                playmouse.y = relMousePos.y;
+            }
+        }
+        if (playmouse.enableLeft) {
+            if (relMousePos.x<=playmouse.x) {
+                playmouse.x = relMousePos.x;
+            }
+        }
+        if (playmouse.enableRight) {
+            if (relMousePos.x>=playmouse.x) {
+                playmouse.x = relMousePos.x;
+            }
+        }
+    };
+}
+
+function handleMouseMove(event) {
+    var dot, eventDoc, doc, body, pageX, pageY;
+
+    event = event || window.event; // IE-ism
+
+    // If pageX/Y aren't available and clientX/Y are,
+    // calculate pageX/Y - logic taken from jQuery.
+    // (This is to support old IE)
+    if (event.pageX == null && event.clientX != null) {
+        eventDoc = (event.target && event.target.ownerDocument) || document;
+        doc = eventDoc.documentElement;
+        body = eventDoc.body;
+
+        event.pageX = event.clientX +
+          (doc && doc.scrollLeft || body && body.scrollLeft || 0) -
+          (doc && doc.clientLeft || body && body.clientLeft || 0);
+        event.pageY = event.clientY +
+          (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
+          (doc && doc.clientTop  || body && body.clientTop  || 0 );
+    }
+
+    mousePos = {
+        x: event.pageX,
+        y: event.pageY
+    };
+
+    var pos = mousePos;
+    var newx, newy;
+    if (!pos) {
+        console.warn("UpdateMousePos called when no mouse movement was seen");
+    } else {
+        var px = pos.x-=mouseOffsetX;
+        var py = pos.y-=mouseOffsetY;
+        var ppx = window.innerWidth/Physics.width;
+        var ppy = window.innerHeight/Physics.height;
+        newx = Math.round(px/ppx);
+        newy = Math.round(py/ppy);
+        //console.log(newx,newy);
+    }
+
+    relMousePos = {
+        x: newx,
+        y: newy
+    }
+}

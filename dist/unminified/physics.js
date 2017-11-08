@@ -289,6 +289,7 @@ var Physics = {
     shape3d: function(type, options) {
         this.x = options.x || 0;
         this.y = options.y || 0;
+        this.z = options.z || 0;
         this.mesh = [];
         this.colorMesh = [];
         this.replaceWithSpace = options.replaceWithSpace || false;
@@ -351,7 +352,57 @@ var Physics = {
 
         this.type = type;
         if (type == "cube") {
-            //do 3d shiz
+            this.height = options.height || 10;
+            this.width = options.width || 10;
+            this.depth = options.depth || 10;
+            var hr = options.height/2;
+            var wr = options.width/2;
+            var dr = options.depth/2;
+            this.center = new Physics.util3d.point3d(this.x-wr,this.y-hr,this.z-dr);
+            this.size = (hr+wr+dr)/3;
+
+            this.updateVertices = function(center,d) {
+                this.vertices = [
+                    new Physics.3dutil.point3d(center.x - d, center.y - d, center.z + d),
+                    new Physics.3dutil.point3d(center.x - d, center.y - d, center.z - d),
+                    new Physics.3dutil.point3d(center.x + d, center.y - d, center.z - d),
+                    new Physics.3dutil.point3d(center.x + d, center.y - d, center.z + d),
+                    new Physics.3dutil.point3d(center.x + d, center.y + d, center.z + d),
+                    new Physics.3dutil.point3d(center.x + d, center.y + d, center.z - d),
+                    new Physics.3dutil.point3d(center.x - d, center.y + d, center.z - d),
+                    new Physics.3dutil.point3d(center.x - d, center.y + d, center.z + d)
+                ];
+            }
+            this.updateVertices(this.center,this.size);
+            this.faces = [
+                [this.vertices[0], this.vertices[1], this.vertices[2], this.vertices[3]],
+                [this.vertices[3], this.vertices[2], this.vertices[5], this.vertices[4]],
+                [this.vertices[4], this.vertices[5], this.vertices[6], this.vertices[7]],
+                [this.vertices[7], this.vertices[6], this.vertices[1], this.vertices[0]],
+                [this.vertices[7], this.vertices[0], this.vertices[3], this.vertices[4]],
+                [this.vertices[1], this.vertices[6], this.vertices[5], this.vertices[2]]
+            ]; //make list of coords in shape using project and line and then coords2mesh to make it into a mesh to render
+
+            for (var j = 0, n_faces = this.faces.length; j < n_faces; j++) {
+                // Current face
+                var face = this.faces[j];
+
+                // Draw the first vertex
+                var P = project(face[0]);
+                ctx.beginPath();
+                ctx.moveTo(P.x + dx, -P.y + dy);
+
+                // Draw the other vertices
+                for (var k = 1, n_vertices = face.length; k < n_vertices; ++k) {
+                    P = project(face[k]);
+                    ctx.lineTo(P.x + dx, -P.y + dy);
+                }
+
+                // Close the path and draw the face
+                ctx.closePath();
+                ctx.stroke();
+                ctx.fill();
+            }
         } else {
             console.error("Shape not found. There may be errors rendering.");
         }

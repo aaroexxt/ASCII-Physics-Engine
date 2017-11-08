@@ -286,6 +286,180 @@ var Physics = {
             this.update(); //update to start gravity and set updated point table
         }
     },
+    shape3d: function(type, options) {
+        this.x = options.x || 0;
+        this.y = options.y || 0;
+        this.mesh = [];
+        this.colorMesh = [];
+        this.replaceWithSpace = options.replaceWithSpace || false;
+        if (typeof this.replaceWithSpace == "undefined") {
+            this.replaceWithSpace = false;
+        }
+        this.shapeArrayNum = Physics.renderLoopShapes.length;
+        Physics.renderLoopShapes[Physics.renderLoopShapes.length] = this;
+        this.color = options.color || "black";
+        if (typeof this.color === "undefined") {
+            this.color = "black";
+        }
+
+        this.UUID = generateUUID();
+        this.gravity = options.gravity || false;
+        if (typeof this.gravity === "undefined" || typeof options.gravity === "undefined") {
+            this.gravity = false;
+        }
+        this.momentumX = 0;
+        this.momentumY = 0;
+        this.collide = options.collide;
+        if (typeof this.collide === "undefined") {
+            this.collide = true;
+        }
+        this.overrideRenderLimit = options.overrideRenderLimit || false;
+        if (typeof this.overrideRenderLimit === "undefined") {
+            this.overrideRenderLimit = false;
+        }
+
+        if (typeof options.enableUp == "undefined") {
+            options.enableUp = true;
+        }
+        if (typeof options.enableDown == "undefined") {
+            options.enableDown = true;
+        }
+        if (typeof options.enableLeft == "undefined") {
+            options.enableLeft = true;
+        }
+        if (typeof options.enableRight == "undefined") {
+            options.enableRight = true;
+        }
+        this.enableUp = options.enableUp;
+        this.enableDown = options.enableDown;
+        this.enableLeft = options.enableLeft;
+        this.enableRight = options.enableRight;
+
+        this.pointTable = [];
+        this.updPointTable = [];
+        this.faces = [];
+        this.vertices = [];
+        this.collisionBottom = false;
+        this.collisionTop = false;
+        this.collisionRight = false;
+        this.collisionLeft = false;
+
+        this.character = options.character || Physics.defaultShapeChar;
+        if (this.character.length > 1) {
+            this.character = this.character.substring(0,1);
+        }
+
+        this.type = type;
+        if (type == "cube") {
+            //do 3d shiz
+        } else {
+            console.error("Shape not found. There may be errors rendering.");
+        }
+        this.pointTable.uniqueify(); //remove calls for multiple points
+        //this.update(); //update to start gravity and set updated point table
+    },
+    util3d: {
+        point3d: function(ix,iy,iz) {
+            this.x = ix;
+            this.y = iy;
+            this.z = iz;
+            this.project = function() {
+                return new Physics.util3d.point2d(this.x, this.z);
+            }
+        },
+        point2d: function(ix, iy) {
+            this.x = ix;
+            this.y = iy;
+        },
+        line: function(p, p2) { //make a line using bresenham's algorithm
+            if (typeof p.x == "undefined" || typeof p.y == "undefined" || typeof p.z != "undefined") {
+                return console.error("First 2d point is missing an argument or has a z value UTIL3D_LINE");
+            }
+            if (typeof p2.x == "undefined" || typeof p2.y == "undefined" || typeof p2.z != "undefined") {
+                return console.error("Second 2d point is missing an argument or has a z value UTIL3D_LINE");
+            }
+
+            var deltax = Math.abs(p2.x - p.x); //setup vars
+            var deltay = Math.abs(p2.y - p.y);
+            var stepx = (p.x < p2.x) ? 1 : -1;
+            var stepy = (p.y < p2.y) ? 1 : -1;
+            var err = deltax - deltay;
+            var coords = [];
+
+            var tx1 = p.x;
+            var tx2 = p2.x;
+            var ty1 = p.y;
+            var ty2 = p2.y;
+
+            coords.push([tx1, ty1]);
+            while (!((tx1 == tx2) && (ty1 == ty2))) {
+                var e2 = err << 1;
+                if (e2 > -deltay) {
+                    err -= deltay;
+                    tx1 += stepx;
+                }
+                if (e2 < deltax) {
+                    err += deltax;
+                    ty1 += stepy;
+                }
+                coords.push([tx1, ty1]);
+            }
+            return coords;
+        },
+        coords2mesh: function(coords,character,map) {
+            if (coords.length == 0) {
+                return console.error("Coordinates array length is 0");
+            }
+            if (typeof map == "undefined") {
+                map = false;
+            }
+
+            if (typeof character == "undefined") {
+                console.warn("Character undefined, defaulting");
+                character = Physics.defaultShapeChar;
+            }
+
+            var xmin = 0;
+            var ymin = 0;
+            var xmax = 0;
+            var ymax = 0;
+            for (var i=0; i<coords.length; i++) {
+                if (coords[i][0] < xmin) {
+                    xmin = coords[i][0];
+                } else if (coords[i][0] > xmax) {
+                    xmax = coords[i][0];
+                }
+                if (coords[i][1] < ymin) {
+                    ymin = coords[i][1];
+                } else if (coords[i][1] > ymax) {
+                    ymax = coords[i][1];
+                }
+            }
+
+            if (map) {
+                var mappedcoords = [];
+                for (var i=0; i<coords.length; i++) {
+                    mappedcoords[i] = [coords[i][0]-xmin,coords[i][1]-ymin];
+                }
+            } else {
+                var mappedcoords = coords;
+            }
+
+            var mesh = [];
+            for (var i=0; i<mappedcoords.length; i++) {
+                mesh[i] = [];
+                for (j=0; j<xmax; j++) {
+                    mesh[i][j] = Physics.defaultSpaceChar;
+                }
+                if (typeof mesh[i][mappedcoords[i][1]] == "undefined") {
+                    mesh[i][mappedcoords[i][0]] = " ";
+                }
+                mesh[i][mappedcoords[i][0]] = character;
+            }
+
+            return new Physics.shape("custom", {mesh: mesh, x: xmin, y: ymin});
+        }
+    },
     render: function(clearScreen) { //todo fix slow replaceat functions
         if (typeof clearScreen === "undefined") {
             clearScreen = false;
@@ -723,7 +897,7 @@ var Physics = {
                     if (_this.firstRun) {
                         firstrunstr = firstrunstr.substring(0, firstrunstr.length-1);
                         firstrunstr+=");";
-                        console.log("firstrun:"+firstrunstr)
+                        if (Physics.debugMode){console.log("firstrun renderloopauto: "+firstrunstr);}
                         eval(firstrunstr);
                         _this.firstRun = false;
                     }
@@ -889,7 +1063,7 @@ Physics.shape.prototype.moveTowardsObject = function(object,maxspeed) {
     maxspeed = Math.abs(maxspeed);
     var diffx = -((this.x + ((this.width || this.length) / 2)) - object.x);
     if(diffx < 0 && diffx < -maxspeed) { // max speed left
-        diffx = maxspeed;
+        diffx = -maxspeed;
     } else if (diffx > 0 && diffx > maxspeed) { // max speed right
         diffx = maxspeed;
     }
@@ -898,14 +1072,15 @@ Physics.shape.prototype.moveTowardsObject = function(object,maxspeed) {
     }
 
     var diffy = -((this.y + (this.height / 2)) - object.y);
-    if(diffy < 0 && diffx < -maxspeed) { // max speed left
-        diffy = maxspeed;
-    } else if (diffy > 0 && diffy > maxspeed) { // max speed right
+    if(diffy < 0 && diffy < -maxspeed) { // max speed up
+        diffy = -maxspeed;
+    } else if (diffy > 0 && diffy > maxspeed) { // max speed down
         diffy = maxspeed;
     }
     if ((this.enableUp && diffy < 0) || (this.enableDown && diffy > 0)) {
         this.y+=diffy;
     }
+    if (Physics.debugMode) {console.log("movetowards object diffx: "+diffx+", diffy: "+diffy);}
 }
 
 var play = [];

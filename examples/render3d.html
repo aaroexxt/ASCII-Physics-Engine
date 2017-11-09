@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bounce Physics!</title>
+        <script src="../dist/unminified/physics.js"></script>
+        <script src="../dist/minified/helpLib.min.js"></script>
+        <script src="../dist/minified/stats.min.js"></script>
+        <meta charset="utf-8">
+    </head>
+    <body style="margin: 0; height: 100%; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+        <pre id="phys"></pre>
+        <script>
+            Physics.element = ID("phys");
+            Physics.init();
+            //Physics.debugMode = true;
+            Physics.ignoreMeshSize = true;
+            var box = new Physics.shape3d("cube",{height: 3, gravity: false, width: 3, depth: 3, character: "*", x: 5, y: 25, z: 10});
+            var canvas = document.createElement("canvas");
+            canvas.zIndex = 10000;
+            canvas.setAttribute("width", window.innerWidth);
+            canvas.setAttribute("height", window.innerHeight);
+            canvas.setAttribute("style", "position: absolute; x:0; y:0;");
+            document.body.appendChild(canvas);
+            var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function() {
+                console.log("frame reached!");
+                //box.rotate(box.center, -Math.PI / 720, Math.PI / 720);
+                var wstr = "";
+                var buf = [];
+                for (var i=0; i<Physics.width; i++) {
+                    wstr+=" ";
+                }
+                for (var i=0; i<Physics.height; i++) {
+                    buf[i] = wstr;
+                }
+                for (var i=0; i<box.coords.length; i++) {
+                    buf[box.coords[i][1]] = buf[box.coords[i][1]].replaceAt(box.coords[i][0],"*");
+                }
+                var rs = "";
+                for (var i=0; i<buf.length; i++) { //write it to string to optimize writing calls
+                    rs+=buf[i]+Physics.defaultNewlineChar;
+                }
+                Physics.element.innerHTML = rs;
+                /*var ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (var i=0; i<box.coords.length; i++) {
+                    ctx.fillRect(box.coords[i][0],box.coords[i][1],1,1);
+                }*/
+            }});
+            box.dilate(3);
+            loop.start();
+            //setTimeout(function(){loop.stop()},5000);
+        </script>
+    </body>
+</html>

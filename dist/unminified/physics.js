@@ -403,6 +403,14 @@ var Physics = {
                 }
                 this.updateCoords();
             }
+            this.dilate = function(mult) {
+                for (var i=0; i<this.vertices.length; i++) {
+                    this.vertices[i].x = Math.round(this.vertices[i].x*mult);
+                    this.vertices[i].y = Math.round(this.vertices[i].y*mult);
+                    this.vertices[i].z = Math.round(this.vertices[i].z*mult);
+                }
+                this.updateCoords();
+            }
             this.translate = function(x,y,z) {
                 if (typeof x == "undefined") {
                     x = 0;
@@ -430,20 +438,20 @@ var Physics = {
                 [this.vertices[1], this.vertices[6], this.vertices[5], this.vertices[2]]
             ]; //make list of coords in shape using project and line and then coords2mesh to make it into a mesh to render
 
-            var coords = [];
             this.updateCoords = function() {
+                var coords = [];
                 for (var i = 0, n_faces = this.faces.length; i < n_faces; i++) {
                     // Current face
                     var face = this.faces[i];
 
                     // Set up the first vertex
-                    var sP = face[0].projectDistance(100);
+                    var sP = face[0].projectDistance(550);
                     //sP.x += Physics.width/2;
                     //sP.y = -sP.y + Physics.height/2;
 
                     // Draw the other vertices
                     for (var j = 1, n_vertices = face.length; j < n_vertices; ++j) {
-                        var fP = face[j].projectDistance(100); //project new faces
+                        var fP = face[j].projectDistance(550); //project new faces
                         //fP.x += Physics.width/2;
                         //fP.y = -fP.y + Physics.height/2;
                         var vcoord = Physics.util3d.line(sP, fP); //draw a line
@@ -460,7 +468,7 @@ var Physics = {
                     }
                 }
                 this.coords = coords;
-                this.mesh = Physics.util3d.coords2mesh(coords).mesh;
+                this.mesh = Physics.util3d.coords2mesh(coords,"*",false).mesh;
                 this.colorMesh = [""];
             }
             this.updateCoords();
@@ -476,7 +484,7 @@ var Physics = {
             this.y = iy;
             this.z = iz;
             this.projectOrtho = function() {
-                return new Physics.util3d.point2d(this.x, this.z);
+                return new Physics.util3d.point2d(this.x + this.z, this.y - this.z);
             }
             this.projectDistance = function(dist) {
                 if (typeof dist == "undefined") {
@@ -531,7 +539,7 @@ var Physics = {
             var tx2 = p2.x;
             var ty1 = p.y;
             var ty2 = p2.y;
-            var MAXCOORDS = 100;
+            var MAXCOORDS = 10000;
 
             coords.push([tx1, ty1]);
             while (!((tx1 == tx2) && (ty1 == ty2)) && MAXCOORDS > 0) {

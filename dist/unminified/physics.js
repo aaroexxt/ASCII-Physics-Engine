@@ -2,7 +2,8 @@
 physics.js by Aaron Becker
 A complete ASCII physics engine written in JavaScript
 */
-
+//REENABLE UPDATING AFTER CREATING SHAPES!
+console.log("RE-ENABLE UPDATING AFTER CREATING SHAPES!")
 var Physics = {
     element: null,
     defaultSpaceChar: " ",
@@ -38,6 +39,7 @@ var Physics = {
     lineHeight: 0.65,
     initialLineHeight: 0.83,
     collisionAccuracy: 0.5,
+    ignoreMeshSize: false, //DO NOT ENABLE UNLESS YOU ARE TESTING
     //MISC
     collisionEfficiency: -1,
     inefficientArr: [],
@@ -283,7 +285,7 @@ var Physics = {
                 console.error("Shape not found. There may be errors rendering.");
             }
             this.pointTable.uniqueify(); //remove calls for multiple points
-            this.update(); //update to start gravity and set updated point table
+            //this.update(); //update to start gravity and set updated point table
         }
     },
     shape3d: function(type, options) {
@@ -355,23 +357,68 @@ var Physics = {
             this.height = options.height || 10;
             this.width = options.width || 10;
             this.depth = options.depth || 10;
+            if (typeof this.height == "undefined") {
+                this.height = 10;
+            }
+            if (typeof this.width == "undefined") {
+                this.width = 10;
+            }
+            if (typeof this.depth == "undefined") {
+                this.depth = 10;
+            }
             var hr = options.height/2;
             var wr = options.width/2;
             var dr = options.depth/2;
-            this.center = new Physics.util3d.point3d(this.x-wr,this.y-hr,this.z-dr);
+            if (typeof hr == "undefined") {
+                return console.error("Height undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
+            }
+            if (typeof wr == "undefined") {
+                return console.error("Width undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
+            }
+            if (typeof dr == "undefined") {
+                return console.error("Depth undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
+            }
+            if (Physics.debugMode) {console.log("construct 3d shape hr: "+hr+", wr: "+wr+", dr: "+dr+", size: "+((hr+wr+dr)/3))}
+            this.center = new Physics.util3d.point3d(this.x+wr,this.y+hr,this.z+dr);
             this.size = (hr+wr+dr)/3;
 
             this.updateVertices = function(center,d) {
                 this.vertices = [
-                    new Physics.3dutil.point3d(center.x - d, center.y - d, center.z + d),
-                    new Physics.3dutil.point3d(center.x - d, center.y - d, center.z - d),
-                    new Physics.3dutil.point3d(center.x + d, center.y - d, center.z - d),
-                    new Physics.3dutil.point3d(center.x + d, center.y - d, center.z + d),
-                    new Physics.3dutil.point3d(center.x + d, center.y + d, center.z + d),
-                    new Physics.3dutil.point3d(center.x + d, center.y + d, center.z - d),
-                    new Physics.3dutil.point3d(center.x - d, center.y + d, center.z - d),
-                    new Physics.3dutil.point3d(center.x - d, center.y + d, center.z + d)
+                    new Physics.util3d.point3d(center.x - d, center.y - d, center.z + d),
+                    new Physics.util3d.point3d(center.x - d, center.y - d, center.z - d),
+                    new Physics.util3d.point3d(center.x + d, center.y - d, center.z - d),
+                    new Physics.util3d.point3d(center.x + d, center.y - d, center.z + d),
+                    new Physics.util3d.point3d(center.x + d, center.y + d, center.z + d),
+                    new Physics.util3d.point3d(center.x + d, center.y + d, center.z - d),
+                    new Physics.util3d.point3d(center.x - d, center.y + d, center.z - d),
+                    new Physics.util3d.point3d(center.x - d, center.y + d, center.z + d)
                 ];
+            }
+            this.rotate = function(center,theta,phi) {
+                for (var i=0; i<this.vertices.length; i++) {
+                    this.vertices[i].rotate(center,theta,phi);
+                    this.vertices[i].x = Math.round(this.vertices[i].x);
+                    this.vertices[i].y = Math.round(this.vertices[i].y);
+                    this.vertices[i].z = Math.round(this.vertices[i].z);
+                }
+                this.updateCoords();
+            }
+            this.translate = function(x,y,z) {
+                if (typeof x == "undefined") {
+                    x = 0;
+                }
+                if (typeof y == "undefined") {
+                    y = 0;
+                }
+                if (typeof z == "undefined") {
+                    z = 0;
+                }
+                for (var i=0; i<this.vertices.length; i++) {
+                    this.vertices[i].x = Math.round(this.vertices[i].x+x);
+                    this.vertices[i].y = Math.round(this.vertices[i].y+y);
+                    this.vertices[i].z = Math.round(this.vertices[i].z+z);
+                }
+                this.updateCoords();
             }
             this.updateVertices(this.center,this.size);
             this.faces = [
@@ -383,26 +430,40 @@ var Physics = {
                 [this.vertices[1], this.vertices[6], this.vertices[5], this.vertices[2]]
             ]; //make list of coords in shape using project and line and then coords2mesh to make it into a mesh to render
 
-            for (var j = 0, n_faces = this.faces.length; j < n_faces; j++) {
-                // Current face
-                var face = this.faces[j];
+            var coords = [];
+            this.updateCoords = function() {
+                for (var i = 0, n_faces = this.faces.length; i < n_faces; i++) {
+                    // Current face
+                    var face = this.faces[i];
 
-                // Draw the first vertex
-                var P = project(face[0]);
-                ctx.beginPath();
-                ctx.moveTo(P.x + dx, -P.y + dy);
+                    // Set up the first vertex
+                    var sP = face[0].projectDistance(100);
+                    //sP.x += Physics.width/2;
+                    //sP.y = -sP.y + Physics.height/2;
 
-                // Draw the other vertices
-                for (var k = 1, n_vertices = face.length; k < n_vertices; ++k) {
-                    P = project(face[k]);
-                    ctx.lineTo(P.x + dx, -P.y + dy);
+                    // Draw the other vertices
+                    for (var j = 1, n_vertices = face.length; j < n_vertices; ++j) {
+                        var fP = face[j].projectDistance(100); //project new faces
+                        //fP.x += Physics.width/2;
+                        //fP.y = -fP.y + Physics.height/2;
+                        var vcoord = Physics.util3d.line(sP, fP); //draw a line
+                        if (Physics.debugMode) {console.log("sP: "+JSON.stringify(sP)+", fP: "+JSON.stringify(fP)+", face: "+i+", vertice: "+j+", vcoord: "+JSON.stringify(vcoord));}
+                        //coords.push(vcoord);
+                        for (var k = 0; k<vcoord.length; k++) { //push coords to array
+                            coords.push(vcoord[k]);
+                            /*if (vcoord.length < 100) {
+                                console.log("vc->"+vcoord[k]);
+                            }*/
+                        }
+
+                        sP = JSON.parse(JSON.stringify(fP)); //set previous coord to current
+                    }
                 }
-
-                // Close the path and draw the face
-                ctx.closePath();
-                ctx.stroke();
-                ctx.fill();
+                this.coords = coords;
+                this.mesh = Physics.util3d.coords2mesh(coords).mesh;
+                this.colorMesh = [""];
             }
+            this.updateCoords();
         } else {
             console.error("Shape not found. There may be errors rendering.");
         }
@@ -414,8 +475,34 @@ var Physics = {
             this.x = ix;
             this.y = iy;
             this.z = iz;
-            this.project = function() {
+            this.projectOrtho = function() {
                 return new Physics.util3d.point2d(this.x, this.z);
+            }
+            this.projectDistance = function(dist) {
+                if (typeof dist == "undefined") {
+                    dist = 300;
+                }
+                // Distance between the camera and the plane
+                var r = dist / this.y;
+
+                return new Physics.util3d.point2d((r * this.x)/4, (r * this.z)/4);
+            }
+            this.rotate = function(center, theta, phi) {
+                // Rotation matrix coefficients
+                var ct = Math.cos(theta);
+                var st = Math.sin(theta);
+                var cp = Math.cos(phi);
+                var sp = Math.sin(phi);
+
+                // Rotation
+                var x = this.x - center.x;
+                var y = this.y - center.y;
+                var z = this.z - center.z;
+
+                this.x = ct * x - st * cp * y + st * sp * z + center.x;
+                this.y = st * x + ct * cp * y - ct * sp * z + center.y;
+                this.z = sp * y + cp * z + center.z;
+                return this;
             }
         },
         point2d: function(ix, iy) {
@@ -429,7 +516,10 @@ var Physics = {
             if (typeof p2.x == "undefined" || typeof p2.y == "undefined" || typeof p2.z != "undefined") {
                 return console.error("Second 2d point is missing an argument or has a z value UTIL3D_LINE");
             }
-
+            p.x = Math.round(p.x);
+            p.y = Math.round(p.y);
+            p2.x = Math.round(p2.x);
+            p2.y = Math.round(p2.y);
             var deltax = Math.abs(p2.x - p.x); //setup vars
             var deltay = Math.abs(p2.y - p.y);
             var stepx = (p.x < p2.x) ? 1 : -1;
@@ -441,9 +531,11 @@ var Physics = {
             var tx2 = p2.x;
             var ty1 = p.y;
             var ty2 = p2.y;
+            var MAXCOORDS = 100;
 
             coords.push([tx1, ty1]);
-            while (!((tx1 == tx2) && (ty1 == ty2))) {
+            while (!((tx1 == tx2) && (ty1 == ty2)) && MAXCOORDS > 0) {
+                MAXCOORDS--;
                 var e2 = err << 1;
                 if (e2 > -deltay) {
                     err -= deltay;
@@ -490,10 +582,13 @@ var Physics = {
             if (map) {
                 var mappedcoords = [];
                 for (var i=0; i<coords.length; i++) {
-                    mappedcoords[i] = [coords[i][0]-xmin,coords[i][1]-ymin];
+                    mappedcoords[i] = [Math.round(coords[i][0]-xmin),Math.round(coords[i][1]-ymin)];
                 }
             } else {
-                var mappedcoords = coords;
+                var mappedcoords = [];
+                for (var i=0; i<coords.length; i++) {
+                    mappedcoords[i] = [Math.round(coords[i][0]),Math.round(coords[i][1])];
+                }
             }
 
             var mesh = [];
@@ -574,8 +669,12 @@ var Physics = {
                         console.error("Error rendering: argument "+i+" doesn't have a width or height property")
                     }
                     if ((arguments[i].width > Physics.width || arguments[i].height > Physics.height) && arguments[i].type != "colorbox") {
-                        bad = true;
-                        console.error("Error rendering: argument "+i+"'s mesh is too large to fit on screen");
+                        if (Physics.ignoreMeshSize) {
+                            console.warn("Warning: IgnoreMeshSize is enabled. The mesh you are *attempting* to render is too large for the screen. Parts of what you are trying to render may be cut off. Normally, this would throw an error, but not anymore :)");
+                        } else {
+                            bad = true;
+                            console.error("Error rendering: argument "+i+"'s mesh is too large to fit on screen");
+                        }
                     }
                     if (bad == false) {
                         var x = constrain(arguments[i].x,0,(Physics.width-arguments[i].width)); //constrain x
@@ -624,7 +723,9 @@ var Physics = {
                                                     Physics.charsPerFrame++;
                                                 }
                                             } catch(e) {
-                                                console.error("Error while rendering physics buffer for shape "+arguments[i].type+", UUID "+arguments[i].UUID+", x: "+(b+x)+", y: "+(j+y)+", error: "+e);
+                                                if (!Physics.ignoreMeshSize) {
+                                                    console.error("Error while rendering physics buffer for shape "+arguments[i].type+", UUID "+arguments[i].UUID+", x: "+(b+x)+", y: "+(j+y)+", error: "+e);
+                                                }
                                             }
                                             if (Physics.debugMode){console.log("Adding to buffer (non-color) at x: "+(b+x)+", offset: "+JSON.stringify(colorXOffset)+", j val: "+j+", y: "+(j+y)+", char: "+mesh[j][b])}
                                         }

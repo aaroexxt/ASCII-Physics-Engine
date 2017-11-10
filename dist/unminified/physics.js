@@ -184,7 +184,7 @@ var Physics = {
                 }
             } else if (type == "custom") {
                 if (typeof options.mesh === "undefined" || typeof options.mesh !== "object") {
-                    console.error("Mesh for custom object is undefined");
+                    console.error("Mesh for custom object is undefined SHAPE_CONSTRUCT");
                 } else {
                     this.width = 0;
                     this.height = options.mesh.length;
@@ -200,8 +200,8 @@ var Physics = {
                                 this.colorMesh[i] += " ";
                             } else {
                                 this.colorMesh[i] += "<span style='color: "+this.color+";'>"+options.mesh[i][j]+"</span>";
+                                this.pointTable[this.pointTable.length] = [i,j];
                             }
-                            this.pointTable[this.pointTable.length] = [i,j];
                         }
                     }
                 }
@@ -282,13 +282,17 @@ var Physics = {
                     }
                 }
             } else {
-                console.error("Shape not found. There may be errors rendering.");
+                console.error("Shape not found. There may be errors rendering. SHAPE_CONSTRUCT");
             }
             this.pointTable.uniqueify(); //remove calls for multiple points
-            //this.update(); //update to start gravity and set updated point table
+            this.update(); //update to start gravity and set updated point table
         }
     },
     shape3d: function(type, options) {
+
+        this.prototype = Object.create(Physics.shape.prototype); //inherit methods from shape like update
+        this.prototype.constructor = this;
+
         this.x = options.x || 0;
         this.y = options.y || 0;
         this.z = options.z || 0;
@@ -347,6 +351,11 @@ var Physics = {
         this.collisionRight = false;
         this.collisionLeft = false;
 
+        this.camera = options.camera;
+        if (typeof this.camera == "undefined") {
+            this.camera = new Physics.orthographicCamera();
+        }
+
         this.character = options.character || Physics.defaultShapeChar;
         if (this.character.length > 1) {
             this.character = this.character.substring(0,1);
@@ -394,9 +403,31 @@ var Physics = {
                     new Physics.util3d.point3d(center.x - d, center.y + d, center.z + d)
                 ];
             }
-            this.rotate = function(center,theta,phi) {
+            this.updateVertices(this.center,this.size);
+            this.rotateCenter = function(center,theta,phi) {
+                if (typeof center == "undefined" || typeof theta == "undefined" || typeof phi == "undefined") {
+                    return console.error("Theta x, y, or z undefined 3DPOINT_ROTCENTER");
+                }
+                this.x -= this.vertices[0].x-(this.vertices[0].rotateCenter(center,theta,phi).x);
+                this.y -= this.vertices[0].y-(this.vertices[0].rotateCenter(center,theta,phi).y);
+                this.z -= this.vertices[0].z-(this.vertices[0].rotateCenter(center,theta,phi).z);
                 for (var i=0; i<this.vertices.length; i++) {
-                    this.vertices[i].rotate(center,theta,phi);
+                    this.vertices[i] = this.vertices[i].rotateCenter(center,theta,phi);
+                    this.vertices[i].x = Math.round(this.vertices[i].x);
+                    this.vertices[i].y = Math.round(this.vertices[i].y);
+                    this.vertices[i].z = Math.round(this.vertices[i].z);
+                }
+                this.updateCoords();
+            }
+            this.rotateAxis = function(thetax,thetay,thetaz) {
+                if (typeof thetax == "undefined" || typeof thetay == "undefined" || typeof thetay == "undefined") {
+                    return console.error("Theta value for x, y, or z undefined 3DPOINT_ROTAXIS");
+                }
+                this.x -= this.vertices[0].x-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).x);
+                this.y -= this.vertices[0].y-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).y);
+                this.z -= this.vertices[0].z-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).z);
+                for (var i=0; i<this.vertices.length; i++) {
+                    this.vertices[i] = this.vertices[i].rotateAxis(thetax,thetay,thetaz);
                     this.vertices[i].x = Math.round(this.vertices[i].x);
                     this.vertices[i].y = Math.round(this.vertices[i].y);
                     this.vertices[i].z = Math.round(this.vertices[i].z);
@@ -404,6 +435,12 @@ var Physics = {
                 this.updateCoords();
             }
             this.dilate = function(mult) {
+                if (typeof mult == "undefined") {
+                    return console.error("Multiplier undefined 3DPOINT_DILATE");
+                }
+                this.x -= this.vertices[0].x-(this.vertices[0].x*mult);
+                this.y -= this.vertices[0].y-(this.vertices[0].y*mult);
+                this.z -= this.vertices[0].z-(this.vertices[0].z*mult);
                 for (var i=0; i<this.vertices.length; i++) {
                     this.vertices[i].x = Math.round(this.vertices[i].x*mult);
                     this.vertices[i].y = Math.round(this.vertices[i].y*mult);
@@ -421,6 +458,9 @@ var Physics = {
                 if (typeof z == "undefined") {
                     z = 0;
                 }
+                this.x+=x;
+                this.y+=y;
+                this.z+=z;
                 for (var i=0; i<this.vertices.length; i++) {
                     this.vertices[i].x = Math.round(this.vertices[i].x+x);
                     this.vertices[i].y = Math.round(this.vertices[i].y+y);
@@ -428,7 +468,6 @@ var Physics = {
                 }
                 this.updateCoords();
             }
-            this.updateVertices(this.center,this.size);
             this.faces = [
                 [this.vertices[0], this.vertices[1], this.vertices[2], this.vertices[3]],
                 [this.vertices[3], this.vertices[2], this.vertices[5], this.vertices[4]],
@@ -444,14 +483,14 @@ var Physics = {
                     // Current face
                     var face = this.faces[i];
 
-                    // Set up the first vertex
-                    var sP = face[0].projectDistance(550);
+                    // Set up the first vertex and project
+                    var sP = this.camera.project(face[0]);
                     //sP.x += Physics.width/2;
                     //sP.y = -sP.y + Physics.height/2;
 
                     // Draw the other vertices
                     for (var j = 1, n_vertices = face.length; j < n_vertices; ++j) {
-                        var fP = face[j].projectDistance(550); //project new faces
+                        var fP = this.camera.project(face[j]); //project new faces
                         //fP.x += Physics.width/2;
                         //fP.y = -fP.y + Physics.height/2;
                         var vcoord = Physics.util3d.line(sP, fP); //draw a line
@@ -468,15 +507,34 @@ var Physics = {
                     }
                 }
                 this.coords = coords;
-                this.mesh = Physics.util3d.coords2mesh(coords,"*",false).mesh;
+                var shape = Physics.util3d.coords2mesh(coords,"*");
+                this.mesh = shape.mesh;
+                this.pointTable = shape.pointTable;
                 this.colorMesh = [""];
             }
             this.updateCoords();
         } else {
-            console.error("Shape not found. There may be errors rendering.");
+            console.error("Shape not found. There may be errors rendering. SHAPE_CONSTRUCT");
         }
         this.pointTable.uniqueify(); //remove calls for multiple points
-        //this.update(); //update to start gravity and set updated point table
+        this.update(); //update to start gravity and set updated point table
+    },
+    cameras: {
+        orthographic: function() {
+            this.project = function(p) {
+                return p.projectOrtho();
+            }
+        },
+        perspective: function(dist) {
+            if (typeof dist == "undefined") {
+                return console.error("Distance undefined CAMERA_PERSPECTIVE_MAIN");
+            } else {
+                this.distance = dist;
+            }
+            this.project = function(p) {
+                return p.projectDistance(Math.abs(this.distance));
+            }
+        }
     },
     util3d: {
         point3d: function(ix,iy,iz) {
@@ -495,7 +553,7 @@ var Physics = {
 
                 return new Physics.util3d.point2d((r * this.x)/4, (r * this.z)/4);
             }
-            this.rotate = function(center, theta, phi) {
+            this.rotateCenter = function(center, theta, phi) {
                 // Rotation matrix coefficients
                 var ct = Math.cos(theta);
                 var st = Math.sin(theta);
@@ -510,6 +568,36 @@ var Physics = {
                 this.x = ct * x - st * cp * y + st * sp * z + center.x;
                 this.y = st * x + ct * cp * y - ct * sp * z + center.y;
                 this.z = sp * y + cp * z + center.z;
+                return this;
+            }
+            this.rotateAxis = function(thetax, thetay, thetaz) {
+                var sinThetax = Math.sin(thetax);
+                var cosThetax = Math.cos(thetax);
+                var sinThetay = Math.sin(thetay);
+                var cosThetay = Math.cos(thetay);
+                var sinThetaz = Math.sin(thetaz);
+                var cosThetaz = Math.cos(thetaz);
+
+                var x = this.x;
+                var y = this.y;
+                var z = this.z;
+
+                //Rotate shape around the z-axis
+                this.x = x * cosThetaz - y * sinThetaz;
+                this.y = y * cosThetaz + x * sinThetaz;
+
+                //Rotate shape around the y-axis
+
+                var x = this.x;
+                var z = this.z;
+                this.x = x * cosThetay - z * sinThetay;
+                this.z = z * cosThetay + x * sinThetay;
+
+                //Rotate shape around the x-axis
+                var y = this.y;
+                var z = this.z;
+                this.y = y * cosThetax - z * sinThetax;
+                this.z = z * cosThetax + y * sinThetax;
                 return this;
             }
         },
@@ -559,21 +647,21 @@ var Physics = {
         },
         coords2mesh: function(coords,character,map) {
             if (coords.length == 0) {
-                return console.error("Coordinates array length is 0");
+                return console.error("Coordinates array length is 0 COORDS2MESH");
             }
             if (typeof map == "undefined") {
                 map = false;
             }
 
             if (typeof character == "undefined") {
-                console.warn("Character undefined, defaulting");
+                console.warn("Character undefined, defaulting COORDS2MESH");
                 character = Physics.defaultShapeChar;
             }
 
-            var xmin = 0;
-            var ymin = 0;
-            var xmax = 0;
-            var ymax = 0;
+            var xmin = 1000000;
+            var ymin = 1000000;
+            var xmax = -1000000;
+            var ymax = -1000000;
             for (var i=0; i<coords.length; i++) {
                 if (coords[i][0] < xmin) {
                     xmin = coords[i][0];
@@ -586,33 +674,70 @@ var Physics = {
                     ymax = coords[i][1];
                 }
             }
-
+            if (xmin == 0) {
+                xmin = 1;
+            }
+            if (ymin == 0) {
+                ymin = 1;
+            }
+            var shiftx = 0;
+            if (xmin <= 0) {
+                shiftx = Math.abs(xmin)+1;
+            }
+            var shifty = 0;
+            if (ymin <= 0) {
+                shifty = Math.abs(ymin)+1;
+            }
+            if (Physics.debugMode){console.log("xmin: "+xmin+", ymin: "+ymin+", xmax: "+xmax+", ymax: "+ymax+", shiftx: "+shiftx+", shifty: "+shifty);}
             if (map) {
                 var mappedcoords = [];
                 for (var i=0; i<coords.length; i++) {
-                    mappedcoords[i] = [Math.round(coords[i][0]-xmin),Math.round(coords[i][1]-ymin)];
+                    mappedcoords[i] = [Math.round(coords[i][0]-xmin)+shiftx,Math.round(coords[i][1]-ymin)+shifty];
                 }
             } else {
                 var mappedcoords = [];
                 for (var i=0; i<coords.length; i++) {
-                    mappedcoords[i] = [Math.round(coords[i][0]),Math.round(coords[i][1])];
+                    mappedcoords[i] = [Math.round(coords[i][0])+shiftx,Math.round(coords[i][1])+shifty];
                 }
             }
 
             var mesh = [];
-            for (var i=0; i<mappedcoords.length; i++) {
-                mesh[i] = [];
-                for (j=0; j<xmax; j++) {
-                    mesh[i][j] = Physics.defaultSpaceChar;
-                }
-                if (typeof mesh[i][mappedcoords[i][1]] == "undefined") {
-                    mesh[i][mappedcoords[i][0]] = " ";
-                }
-                mesh[i][mappedcoords[i][0]] = character;
+            var blankLine = "";
+            for (var i=0; i<xmax; i++) { //make blank mesh
+                blankLine += Physics.defaultSpaceChar;
             }
+            for (var i=0; i<ymax; i++) {
+                mesh[i] = JSON.parse(JSON.stringify(blankLine));
+            }
+            for (var i=0; i<mappedcoords.length; i++) {
+                
+                if (mesh.length < mappedcoords[i][1]-1 || mesh[0].length < mappedcoords[i][0]-1 || typeof mesh[mappedcoords[i][1]-1] == "undefined") { //check if point exists in mesh
+                    return console.error("Point x: "+mappedcoords[i][0]+", y: "+mappedcoords[i][1]+", meshheight: "+mesh.length+", meshwidth: "+mesh[0].length+" doesn't exist in mesh COORDS2MESH")
+                }
+                mesh[mappedcoords[i][1]-1] = mesh[mappedcoords[i][1]-1].replaceAt(mappedcoords[i][0]-1,character); //subtract 1 because arrays start at index 0
+            }
+            //return {mesh: mesh};
 
             return new Physics.shape("custom", {mesh: mesh, x: xmin, y: ymin});
         }
+        /*I leave this here as a tribute to when this didn't work. Whoever finds this is awesome! (this code renders coords directly to screen)
+            var wstr = "";
+            var buf = [];
+            for (var i=0; i<Physics.width; i++) {
+                wstr+=" ";
+            }
+            for (var i=0; i<Physics.height; i++) {
+                buf[i] = wstr;
+            }
+            for (var i=0; i<box.coords.length; i++) {
+                buf[box.coords[i][1]] = buf[box.coords[i][1]].replaceAt(box.coords[i][0],"*");
+            }
+            var rs = "";
+            for (var i=0; i<buf.length; i++) { //write it to string to optimize writing calls
+                rs+=buf[i]+Physics.defaultNewlineChar;
+            }
+            Physics.element.innerHTML = rs;
+        */
     },
     render: function(clearScreen) { //todo fix slow replaceat functions
         if (typeof clearScreen === "undefined") {
@@ -660,12 +785,12 @@ var Physics = {
                             arguments[i].update(false);
                     }
                 } catch(e) {
-                    console.error("Error updating gravity for shape. Shape: "+arguments[i]+", e: "+e);
+                    console.error("Error updating gravity for shape. Shape: "+arguments[i]+", e: "+e+" RENDER_MAIN");
                     //console.log(JSON.stringify(arguments))
                 }
                 if (arguments[i].UUID === undefined) { //sanity check!!
                     if (!(i == 0 && (arguments[i] == true || arguments[i] == false))) {
-                        console.error("Error drawing: argument "+i+" does not exist or doesn't have a UUID");
+                        console.error("Error drawing: argument "+i+" does not exist or doesn't have a UUID RENDER_MAIN");
                     }
                 } else {
                     var bad = false;
@@ -674,14 +799,14 @@ var Physics = {
                         arguments[i].height = arguments[i].mesh.length;
                     } catch(e) {
                         bad = true;
-                        console.error("Error rendering: argument "+i+" doesn't have a width or height property")
+                        console.error("Error rendering: argument "+i+" doesn't have a width or height property RENDER_MAIN")
                     }
                     if ((arguments[i].width > Physics.width || arguments[i].height > Physics.height) && arguments[i].type != "colorbox") {
                         if (Physics.ignoreMeshSize) {
                             console.warn("Warning: IgnoreMeshSize is enabled. The mesh you are *attempting* to render is too large for the screen. Parts of what you are trying to render may be cut off. Normally, this would throw an error, but not anymore :)");
                         } else {
                             bad = true;
-                            console.error("Error rendering: argument "+i+"'s mesh is too large to fit on screen");
+                            console.error("Error rendering: argument "+i+"'s mesh is too large to fit on screen RENDER_MAIN");
                         }
                     }
                     if (bad == false) {
@@ -694,7 +819,7 @@ var Physics = {
                         //console.info("x: "+arguments[i].x+", y: "+arguments[i].y+", CONSTx: "+x+", CONSTy: "+y)
                         if (Physics.debugMode){console.info("Shape to be placed at x: "+x+", y: "+y);}
                         if (arguments[i].mesh.length == 0 || arguments[i].colorMesh.length == 0) {
-                            console.error("Error rendering: shape has no mesh (or colorMesh) to render!");
+                            console.error("Error rendering: shape has no mesh (or colorMesh) to render! RENDER_MAIN");
                         } else {
                             if (nextFrameReached || clearScreen == false || arguments[i].overrideRenderLimit || true) { //I'll fix the render timing later, it doesn't work
                                 var mesh = (Physics.renderInColor) ? arguments[i].colorMesh : arguments[i].mesh;
@@ -732,7 +857,7 @@ var Physics = {
                                                 }
                                             } catch(e) {
                                                 if (!Physics.ignoreMeshSize) {
-                                                    console.error("Error while rendering physics buffer for shape "+arguments[i].type+", UUID "+arguments[i].UUID+", x: "+(b+x)+", y: "+(j+y)+", error: "+e);
+                                                    console.error("Error while rendering physics buffer for shape "+arguments[i].type+", UUID "+arguments[i].UUID+", x: "+(b+x)+", y: "+(j+y)+", error: "+e+" RENDER_RENDER");
                                                 }
                                             }
                                             if (Physics.debugMode){console.log("Adding to buffer (non-color) at x: "+(b+x)+", offset: "+JSON.stringify(colorXOffset)+", j val: "+j+", y: "+(j+y)+", char: "+mesh[j][b])}
@@ -848,7 +973,7 @@ var Physics = {
                     if (typeof Physics.inefficientArr[i] != "undefined" && typeof Physics.inefficientArr[i+1] != "undefined") {
                         Physics.calculate_collisions_narrow(Physics.inefficientArr[i],Physics.inefficientArr[i+1]);
                     } else {
-                        console.error("COLL_NARROW: Physics coll i+1 val missing, calculating with previous argument");
+                        console.error("Physics coll i+1 val missing, calculating with previous argument COLL_NARROW");
                         Physics.calculate_collisions_narrow(Physics.innefficientArr[i],Physics.inefficientArr[i-1]);
                     }
                 }
@@ -911,7 +1036,7 @@ var Physics = {
                     shape.collisionRight = true;
                     shape.collisionLeft = false;
                 } else {
-                    console.error("Error calculating collision side from collision (x axis), try running update on shape "+shape.type+", UUID "+shape.UUID);
+                    console.error("Error calculating collision side from collision (x axis), try running update on shape "+shape.type+", UUID "+shape.UUID+" DETERMINECOLLSIDE");
                     shape.calculate();
                 }
             }
@@ -924,7 +1049,7 @@ var Physics = {
                     shape.collisionBottom = false;
                     shape.collisionTop = true;
                 } else {
-                    console.error("Error calculating collision side from collision (y axis), try running update on shape "+shape.type+", UUID "+shape.UUID);
+                    console.error("Error calculating collision side from collision (y axis), try running update on shape "+shape.type+", UUID "+shape.UUID+" DETERMINECOLLSIDE");
                     shape.calculate();
                 }
             }
@@ -940,7 +1065,7 @@ var Physics = {
                     shape2.collisionRight = true;
                     shape2.collisionLeft = false;
                 } else {
-                    console.error("Error calculating collision side from collision (x axis), try running update on shape "+shape2.type+", UUID "+shape2.UUID+"Point X: "+shape2.updPointTable[shape1ind][0]+", center X: "+shape2.centerPoint[0]);
+                    console.error("Error calculating collision side from collision (x axis), try running update on shape "+shape2.type+", UUID "+shape2.UUID+"Point X: "+shape2.updPointTable[shape1ind][0]+", center X: "+shape2.centerPoint[0]+" DETERMINECOLLSIDE");
                     shape2.calculate();
                 }
             }
@@ -953,7 +1078,7 @@ var Physics = {
                     shape2.collisionBottom = false;
                     shape2.collisionTop = true;
                 } else {
-                    console.error("Error calculating collision side from collision (y axis), try running update on shape "+shape2.type+", UUID "+shape2.UUID);
+                    console.error("Error calculating collision side from collision (y axis), try running update on shape "+shape2.type+", UUID "+shape2.UUID+" DETERMINECOLLSIDE");
                     shape2.calculate();
                 }
             }
@@ -991,7 +1116,7 @@ var Physics = {
             }
             console.typeable("debugon","console.log(\"Type debugon into the console to enable debug mode. (Warning: there is about 1000 debug messages outputted per second)\");","console.log(\"Debug mode active.\"); Physics.debugMode = true;");
             console.typeable("debugoff","console.log(\"Type debugoff into the console to disable debug mode.\");","console.log(\"Debug mode disabled.\"); Physics.debugMode = false;");
-            console.typeable("debug2s","console.log('Type debug2s into the console to perform auto-test of code for 2s and then stop it. (Mostly for debugging broken things in render loop)');","console.clear(); fpsInterval = 0; debugon; setFPS(1); setTimeout(function(){fpsInterval = 0; debugoff;},2000);");
+            console.typeable("debug2s","console.log('Type debug2s into the console to perform auto-test of code for 2s and then stop it. (Mostly for debugging broken things in render loop)');","console.clear(); debugon; setTimeout(function(){debugoff;},2000);");
             //console.typeable("stop","console.log('Type stop into the console to stop the game.');","fpsInterval = 0;")
 
         Physics.element.style.lineHeight = String(Physics.lineHeight);
@@ -1001,7 +1126,6 @@ var Physics = {
     },
     clear: function() {
         Physics.renderBuffer = [];
-        Physics.collisionBuffers = [];
         Physics.element.innerHTML = "";
     },
     renderLoop: function(opts) {
@@ -1045,7 +1169,7 @@ var Physics = {
                     }
                     var collisionstr = "Physics.calculate_collisions(";
                     for (var i=1; i<args.length; i++) {
-                        if (Physics.debugMode) {console.log("args into renderloop i: "+i+", arg: "+JSON.stringify(args[i]));}
+                        try{if (Physics.debugMode) {console.log("args into renderloop i: "+i+", arg: "+JSON.stringify(args[i]));}}catch(e){}
                         renderstr+="Physics.renderLoopShapes["+args[i].shapeArrayNum+"],";
                         if (_this.firstRun) {
                             firstrunstr+="Physics.renderLoopShapes["+args[i].shapeArrayNum+"],";
@@ -1068,13 +1192,17 @@ var Physics = {
                     if (_this.options.collision) {
                         eval(collisionstr);
                     }
-                    eval(renderstr);
+                    try {
+                        eval(renderstr);
+                    } catch(e) {
+                        console.error("Error executing render function for renderLoop. E: '"+e+"', RENDERLOOP_LOOP");
+                    }
                     if (_this.options.executeOnFrame) {
                         try {
                             _this.options.onFrame(_this);
                         } catch(e) {
                             _this.options.executeOnFrame = false;
-                            console.error("Error executing onFrame function for renderLoop. E: "+e+", RENDERLOOP_LOOP");
+                            console.error("Error executing onFrame function for renderLoop. E: '"+e+"', RENDERLOOP_LOOP");
                         }
                     }
                 }
@@ -1101,7 +1229,7 @@ var Physics = {
     }
 }
 
-Physics.shape.prototype.update = function(render) {
+Physics.shape.prototype.update = Physics.shape3d.prototype.update = function(render) {
     this.calculate();
 
     var deltaTime = (Physics.forceAverageDelta) ? ((Physics.oldDelta+((Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond)))/2) : (Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond); //calculate deltatime as ratio between tme since last update and updates per second vs calculate deltatime since last frame as ratio between time between last update and updates per second averaged with the last frames delta to redce spikes
@@ -1112,7 +1240,7 @@ Physics.shape.prototype.update = function(render) {
 
     render = render || false;
     if (this.gravity === undefined || this.momentumX === undefined || this.momentumY === undefined) {
-            console.error("Object passed in to update function has no gravity constants");
+            console.error("Object passed in to update function has no gravity constants SHAPE_UPDATE");
     } else {
         if (this.gravity || Physics.allGravity) {
             this.momentumX = constrain(this.momentumX,-Physics.terminalVelocity,Physics.terminalVelocity);
@@ -1184,9 +1312,9 @@ Physics.shape.prototype.update = function(render) {
     }
 }
 
-Physics.shape.prototype.calculate = function() {
+Physics.shape.prototype.calculate = Physics.shape3d.prototype.calculate = function() {
     if (this.pointTable === undefined || this.updPointTable === undefined) {
-        console.error("No point table or updatePointTable object found")
+        console.error("No point table or updatePointTable object found SHAPE_CALCULATE")
     } else {
         this.updPointTable = [];
         for (var i=0; i<this.pointTable.length; i++) {
@@ -1195,14 +1323,14 @@ Physics.shape.prototype.calculate = function() {
                 this.updPointTable[i][0] = this.pointTable[i][0]+this.x;
                 this.updPointTable[i][1] = this.pointTable[i][1]+this.y;
             } else {
-                console.error("Point table i:"+i+" has an invalid point length, not 2");
+                console.error("Point table i:"+i+" has an invalid point length, not 2 SHAPE_CALCULATE");
             }
         }
     }
     this.centerPoint = [(this.updPointTable[0][0]+(0.5*(this.width || this.radius || this.length || this.height || 0))),(this.updPointTable[0][1]+(0.5*(this.height || this.radius || this.length || this.width || 0)))];
 }
 
-Physics.shape.prototype.regenColorMesh = function(newColor) {
+Physics.shape.prototype.regenColorMesh = Physics.shape3d.prototype.regenColorMesh = function(newColor) {
     this.colorMesh = [];
     this.color = newColor;
     for (var i=0; i<this.mesh.length; i++) {
@@ -1219,7 +1347,7 @@ Physics.shape.prototype.regenColorMesh = function(newColor) {
     }
 }
 
-Physics.shape.prototype.moveTowardsObject = function(object,maxspeed) {
+Physics.shape.prototype.moveTowardsObject = Physics.shape3d.prototype.moveTowardsObject = function(object,maxspeed) {
     maxspeed = Math.abs(maxspeed);
     var diffx = -((this.x + ((this.width || this.length) / 2)) - object.x);
     if(diffx < 0 && diffx < -maxspeed) { // max speed left
@@ -1248,7 +1376,7 @@ var timeSinceUpKey;
 var timeBetweenJumps = 900;
 var lastKeyPress = Date.now();
 var map = {};
-Physics.shape.prototype.controlGravity = function() {
+Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlRaw = function() {
     play = this;
     window.onkeydown = window.onkeyup = function(e) {
         var e = window.event ? window.event : e;
@@ -1296,7 +1424,7 @@ Physics.shape.prototype.controlGravity = function() {
 
 var playraw = [];
 var mapraw = {};
-Physics.shape.prototype.controlRaw = function(multiplier) {
+Physics.shape.prototype.controlRaw = Physics.shape3d.prototype.controlRaw = function(multiplier) {
     playraw = this;
     window.onkeydown = window.onkeyup = function(e) {
         var e = window.event ? window.event : e;
@@ -1324,7 +1452,7 @@ var mouseDown = false;
 var relMousePos = {x: 0, y: 0}
 var playmouse = [];
 
-Physics.shape.prototype.controlMouse = function() {
+Physics.shape.prototype.controlMouse = Physics.shape3d.prototype.controlMouse = function() {
     playmouse = this;
     document.onmousemove = function(e) {
         handleMouseMove(e);

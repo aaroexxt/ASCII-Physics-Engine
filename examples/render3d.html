@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Bounce Physics!</title>
+        <title>3D Physics!</title>
         <script src="../dist/unminified/physics.js"></script>
         <script src="../dist/minified/helpLib.min.js"></script>
         <script src="../dist/minified/stats.min.js"></script>
@@ -20,9 +20,9 @@
             //Physics.debugMode = true;
             //Physics.ignoreMeshSize = true;
 
-            var camera = new Physics.cameras.perspective(300);
+            var camera = new Physics.cameras.perspective(100);
 
-            var cube = new Physics.shape3d("cube",{height: 3, gravity: false, width: 3, depth: 3, camera: camera, character: "*", x: 17, y: 25, z: 10});
+            var cube = new Physics.shape3d("pyramid",{height: 3, gravity: false, width: 3, depth: 3, camera: camera, character: "*", x: 17, y: 25, z: 10});
             
             var maxy = Physics.height-cube.y-cube.height-20;
             var miny = 0;
@@ -33,7 +33,8 @@
                 //cube.x = Physics.width/2-cube.width;
                 //cube.y = Physics.height/2-cube.height;
                 if (cube.y >= maxy) {dir = false;} else if (cube.y <= miny) {dir=true;}
-                cube.y = (dir) ? cube.y+0.5 : cube.y-0.5;
+                //cube.y = (dir) ? cube.y+0.5 : cube.y-0.5;
+                //cube.rotateCenter(cube.center,0.05,0)
                 stats.end();
             }},cube);
             cube.dilate(3);

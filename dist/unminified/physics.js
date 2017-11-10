@@ -2,8 +2,6 @@
 physics.js by Aaron Becker
 A complete ASCII physics engine written in JavaScript
 */
-//REENABLE UPDATING AFTER CREATING SHAPES!
-console.log("RE-ENABLE UPDATING AFTER CREATING SHAPES!")
 var Physics = {
     element: null,
     defaultSpaceChar: " ",
@@ -388,7 +386,7 @@ var Physics = {
                 return console.error("Depth undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
             }
             if (Physics.debugMode) {console.log("construct 3d shape hr: "+hr+", wr: "+wr+", dr: "+dr+", size: "+((hr+wr+dr)/3))}
-            this.center = new Physics.util3d.point3d(this.x+wr,this.y+hr,this.z+dr);
+            this.center = new Physics.util3d.point3d(this.x-wr,this.y-hr,this.z-dr);
             this.size = (hr+wr+dr)/3;
 
             this.updateVertices = function(center,d) {
@@ -404,118 +402,171 @@ var Physics = {
                 ];
             }
             this.updateVertices(this.center,this.size);
-            this.rotateCenter = function(center,theta,phi) {
-                if (typeof center == "undefined" || typeof theta == "undefined" || typeof phi == "undefined") {
-                    return console.error("Theta x, y, or z undefined 3DPOINT_ROTCENTER");
-                }
-                this.x -= this.vertices[0].x-(this.vertices[0].rotateCenter(center,theta,phi).x);
-                this.y -= this.vertices[0].y-(this.vertices[0].rotateCenter(center,theta,phi).y);
-                this.z -= this.vertices[0].z-(this.vertices[0].rotateCenter(center,theta,phi).z);
-                for (var i=0; i<this.vertices.length; i++) {
-                    this.vertices[i] = this.vertices[i].rotateCenter(center,theta,phi);
-                    this.vertices[i].x = Math.round(this.vertices[i].x);
-                    this.vertices[i].y = Math.round(this.vertices[i].y);
-                    this.vertices[i].z = Math.round(this.vertices[i].z);
-                }
-                this.updateCoords();
-            }
-            this.rotateAxis = function(thetax,thetay,thetaz) {
-                if (typeof thetax == "undefined" || typeof thetay == "undefined" || typeof thetay == "undefined") {
-                    return console.error("Theta value for x, y, or z undefined 3DPOINT_ROTAXIS");
-                }
-                this.x -= this.vertices[0].x-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).x);
-                this.y -= this.vertices[0].y-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).y);
-                this.z -= this.vertices[0].z-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).z);
-                for (var i=0; i<this.vertices.length; i++) {
-                    this.vertices[i] = this.vertices[i].rotateAxis(thetax,thetay,thetaz);
-                    this.vertices[i].x = Math.round(this.vertices[i].x);
-                    this.vertices[i].y = Math.round(this.vertices[i].y);
-                    this.vertices[i].z = Math.round(this.vertices[i].z);
-                }
-                this.updateCoords();
-            }
-            this.dilate = function(mult) {
-                if (typeof mult == "undefined") {
-                    return console.error("Multiplier undefined 3DPOINT_DILATE");
-                }
-                this.x -= this.vertices[0].x-(this.vertices[0].x*mult);
-                this.y -= this.vertices[0].y-(this.vertices[0].y*mult);
-                this.z -= this.vertices[0].z-(this.vertices[0].z*mult);
-                for (var i=0; i<this.vertices.length; i++) {
-                    this.vertices[i].x = Math.round(this.vertices[i].x*mult);
-                    this.vertices[i].y = Math.round(this.vertices[i].y*mult);
-                    this.vertices[i].z = Math.round(this.vertices[i].z*mult);
-                }
-                this.updateCoords();
-            }
-            this.translate = function(x,y,z) {
-                if (typeof x == "undefined") {
-                    x = 0;
-                }
-                if (typeof y == "undefined") {
-                    y = 0;
-                }
-                if (typeof z == "undefined") {
-                    z = 0;
-                }
-                this.x+=x;
-                this.y+=y;
-                this.z+=z;
-                for (var i=0; i<this.vertices.length; i++) {
-                    this.vertices[i].x = Math.round(this.vertices[i].x+x);
-                    this.vertices[i].y = Math.round(this.vertices[i].y+y);
-                    this.vertices[i].z = Math.round(this.vertices[i].z+z);
-                }
-                this.updateCoords();
-            }
             this.faces = [
-                [this.vertices[0], this.vertices[1], this.vertices[2], this.vertices[3]],
-                [this.vertices[3], this.vertices[2], this.vertices[5], this.vertices[4]],
-                [this.vertices[4], this.vertices[5], this.vertices[6], this.vertices[7]],
-                [this.vertices[7], this.vertices[6], this.vertices[1], this.vertices[0]],
-                [this.vertices[7], this.vertices[0], this.vertices[3], this.vertices[4]],
-                [this.vertices[1], this.vertices[6], this.vertices[5], this.vertices[2]]
+                [this.vertices[0], this.vertices[1], this.vertices[2], this.vertices[3]], //front plane
+                [this.vertices[3], this.vertices[2], this.vertices[5], this.vertices[4]], //right side plane
+                [this.vertices[4], this.vertices[5], this.vertices[6], this.vertices[7]], //back plane
+                [this.vertices[7], this.vertices[6], this.vertices[1], this.vertices[0]], //left plane
+                [this.vertices[7], this.vertices[0], this.vertices[3], this.vertices[4]], //bottom plane
+                [this.vertices[1], this.vertices[6], this.vertices[5], this.vertices[2]] //top plane
             ]; //make list of coords in shape using project and line and then coords2mesh to make it into a mesh to render
-
-            this.updateCoords = function() {
-                var coords = [];
-                for (var i = 0, n_faces = this.faces.length; i < n_faces; i++) {
-                    // Current face
-                    var face = this.faces[i];
-
-                    // Set up the first vertex and project
-                    var sP = this.camera.project(face[0]);
-                    //sP.x += Physics.width/2;
-                    //sP.y = -sP.y + Physics.height/2;
-
-                    // Draw the other vertices
-                    for (var j = 1, n_vertices = face.length; j < n_vertices; ++j) {
-                        var fP = this.camera.project(face[j]); //project new faces
-                        //fP.x += Physics.width/2;
-                        //fP.y = -fP.y + Physics.height/2;
-                        var vcoord = Physics.util3d.line(sP, fP); //draw a line
-                        if (Physics.debugMode) {console.log("sP: "+JSON.stringify(sP)+", fP: "+JSON.stringify(fP)+", face: "+i+", vertice: "+j+", vcoord: "+JSON.stringify(vcoord));}
-                        //coords.push(vcoord);
-                        for (var k = 0; k<vcoord.length; k++) { //push coords to array
-                            coords.push(vcoord[k]);
-                            /*if (vcoord.length < 100) {
-                                console.log("vc->"+vcoord[k]);
-                            }*/
-                        }
-
-                        sP = JSON.parse(JSON.stringify(fP)); //set previous coord to current
-                    }
-                }
-                this.coords = coords;
-                var shape = Physics.util3d.coords2mesh(coords,"*");
-                this.mesh = shape.mesh;
-                this.pointTable = shape.pointTable;
-                this.colorMesh = [""];
+        } else if (type == "pyramid") {
+            this.height = options.height || 10;
+            this.width = options.width || 10;
+            this.depth = options.depth || 10;
+            if (typeof this.height == "undefined") {
+                this.height = 10;
             }
-            this.updateCoords();
+            if (typeof this.width == "undefined") {
+                this.width = 10;
+            }
+            if (typeof this.depth == "undefined") {
+                this.depth = 10;
+            }
+            var hr = options.height/2;
+            var wr = options.width/2;
+            var dr = options.depth/2;
+            if (typeof hr == "undefined") {
+                return console.error("Height undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
+            }
+            if (typeof wr == "undefined") {
+                return console.error("Width undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
+            }
+            if (typeof dr == "undefined") {
+                return console.error("Depth undefined in options of shape, please set it! 3DSHAPE_CONSTRUCT");
+            }
+            if (Physics.debugMode) {console.log("construct 3d shape hr: "+hr+", wr: "+wr+", dr: "+dr+", size: "+((hr+wr+dr)/3))}
+            this.center = new Physics.util3d.point3d(this.x-wr,this.y-hr,this.z-dr);
+            this.size = (hr+wr+dr)/3;
+
+            this.updateVertices = function(center,d) {
+                this.vertices = [
+                    new Physics.util3d.point3d(center.x - d, center.y - d, center.z + d), //front left
+                    new Physics.util3d.point3d(center.x + d, center.y - d, center.z + d), //front right
+                    new Physics.util3d.point3d(center.x + d, center.y + d, center.z + d), //back right
+                    new Physics.util3d.point3d(center.x - d, center.y + d, center.z + d), //back left
+                    new Physics.util3d.point3d(center.x, center.y + d, center.z) //top
+                ];
+            }
+            this.updateVertices(this.center,this.size);
+            this.faces = [
+                [this.vertices[3], this.vertices[0], this.vertices[1], this.vertices[2]], //bottom plane lines
+                [this.vertices[0], this.vertices[1], this.vertices[4]],
+                [this.vertices[0], this.vertices[3], this.vertices[4]],
+                [this.vertices[2], this.vertices[3], this.vertices[4]],
+                [this.vertices[2], this.vertices[1], this.vertices[4]]
+            ];
         } else {
             console.error("Shape not found. There may be errors rendering. SHAPE_CONSTRUCT");
         }
+        this.rotateCenter = function(center,theta,phi) {
+            if (typeof center == "undefined" || typeof theta == "undefined" || typeof phi == "undefined") {
+                return console.error("Theta x, y, or z undefined 3DPOINT_ROTCENTER");
+            }
+            this.x -= this.vertices[0].x-(this.vertices[0].rotateCenter(center,theta,phi).x);
+            this.y -= this.vertices[0].y-(this.vertices[0].rotateCenter(center,theta,phi).y);
+            this.z -= this.vertices[0].z-(this.vertices[0].rotateCenter(center,theta,phi).z);
+            for (var i=0; i<this.vertices.length; i++) {
+                this.vertices[i] = this.vertices[i].rotateCenter(center,theta,phi);
+                this.vertices[i].x = Math.round(this.vertices[i].x);
+                this.vertices[i].y = Math.round(this.vertices[i].y);
+                this.vertices[i].z = Math.round(this.vertices[i].z);
+            }
+            this.updateCoords();
+        }
+        this.rotateAxis = function(thetax,thetay,thetaz) {
+            if (typeof thetax == "undefined" || typeof thetay == "undefined" || typeof thetay == "undefined") {
+                return console.error("Theta value for x, y, or z undefined 3DPOINT_ROTAXIS");
+            }
+            this.x -= this.vertices[0].x-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).x);
+            this.y -= this.vertices[0].y-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).y);
+            this.z -= this.vertices[0].z-(this.vertices[0].rotateAxis(thetax,thetay,thetaz).z);
+            for (var i=0; i<this.vertices.length; i++) {
+                this.vertices[i] = this.vertices[i].rotateAxis(thetax,thetay,thetaz);
+                this.vertices[i].x = Math.round(this.vertices[i].x);
+                this.vertices[i].y = Math.round(this.vertices[i].y);
+                this.vertices[i].z = Math.round(this.vertices[i].z);
+            }
+            this.updateCoords();
+        }
+        this.dilate = function(mult) {
+            if (typeof mult == "undefined") {
+                return console.error("Multiplier undefined 3DPOINT_DILATE");
+            }
+            this.x -= this.vertices[0].x-(this.vertices[0].x*mult);
+            this.y -= this.vertices[0].y-(this.vertices[0].y*mult);
+            this.z -= this.vertices[0].z-(this.vertices[0].z*mult);
+            for (var i=0; i<this.vertices.length; i++) {
+                this.vertices[i].x = Math.round(this.vertices[i].x*mult);
+                this.vertices[i].y = Math.round(this.vertices[i].y*mult);
+                this.vertices[i].z = Math.round(this.vertices[i].z*mult);
+            }
+            this.updateCoords();
+        }
+        this.translate = function(x,y,z) {
+            if (typeof x == "undefined") {
+                x = 0;
+            }
+            if (typeof y == "undefined") {
+                y = 0;
+            }
+            if (typeof z == "undefined") {
+                z = 0;
+            }
+            this.x+=x;
+            this.y+=y;
+            this.z+=z;
+            for (var i=0; i<this.vertices.length; i++) {
+                this.vertices[i].x = Math.round(this.vertices[i].x+x);
+                this.vertices[i].y = Math.round(this.vertices[i].y+y);
+                this.vertices[i].z = Math.round(this.vertices[i].z+z);
+            }
+            this.updateCoords();
+        }
+        this.updateCoords = function() {
+            if (this.faces.length < 1) {
+                return console.error("Faces length is less than 1 3DSHAPE_UPDATECOORDS")
+            }
+            var coords = [];
+            for (var i = 0, n_faces = this.faces.length; i < n_faces; i++) {
+                // Current face
+                var face = this.faces[i];
+
+                // Set up the first vertex and project
+                var sP = this.camera.project(face[0]);
+                //sP.x += Physics.width/2;
+                //sP.y = -sP.y + Physics.height/2;
+
+                // Draw the other vertices
+                for (var j = 1, n_vertices = face.length; j < n_vertices+1; ++j) {
+                    var fP;
+                    if (j == n_vertices) {
+                        fP = this.camera.project(face[0]); //if last, project back to first face
+                    } else {
+                        var fP = this.camera.project(face[j]); //project new faces
+                    }
+                    //fP.x += Physics.width/2;
+                    //fP.y = -fP.y + Physics.height/2;
+                    var vcoord = Physics.util3d.line(sP, fP); //draw a line
+                    if (Physics.debugMode) {console.log("sP: "+JSON.stringify(sP)+", fP: "+JSON.stringify(fP)+", face: "+i+", vertice: "+j+", vcoord: "+JSON.stringify(vcoord));}
+                    //coords.push(vcoord);
+                    for (var k = 0; k<vcoord.length; k++) { //push coords to array
+                        coords.push(vcoord[k]);
+                        /*if (vcoord.length < 100) {
+                            console.log("vc->"+vcoord[k]);
+                        }*/
+                    }
+
+                    sP = JSON.parse(JSON.stringify(fP)); //set previous coord to current
+                }
+            }
+            this.coords = coords;
+            var shape = Physics.util3d.coords2mesh(coords,"*");
+            this.mesh = shape.mesh;
+            this.pointTable = shape.pointTable;
+            this.colorMesh = [""];
+        }
+        this.updateCoords();
         this.pointTable.uniqueify(); //remove calls for multiple points
         this.update(); //update to start gravity and set updated point table
     },
@@ -523,6 +574,11 @@ var Physics = {
         orthographic: function() {
             this.project = function(p) {
                 return p.projectOrtho();
+            }
+        },
+        basic: function() {
+            this.project = function(p) {
+                return p.projectBasic();
             }
         },
         perspective: function(dist) {
@@ -551,7 +607,10 @@ var Physics = {
                 // Distance between the camera and the plane
                 var r = dist / this.y;
 
-                return new Physics.util3d.point2d((r * this.x)/4, (r * this.z)/4);
+                return new Physics.util3d.point2d((r * this.x), (r * this.z));
+            }
+            this.projectBasic = function() {
+                return new Physics.util3d.point2d(this.x, this.z);
             }
             this.rotateCenter = function(center, theta, phi) {
                 // Rotation matrix coefficients
@@ -693,20 +752,40 @@ var Physics = {
                 var mappedcoords = [];
                 for (var i=0; i<coords.length; i++) {
                     mappedcoords[i] = [Math.round(coords[i][0]-xmin)+shiftx,Math.round(coords[i][1]-ymin)+shifty];
+                    if (mappedcoords[i][0] < xmin) {
+                        xmin = mappedcoords[i][0];
+                    } else if (mappedcoords[i][0] > xmax) {
+                        xmax = mappedcoords[i][0];
+                    }
+                    if (mappedcoords[i][1] < ymin) {
+                        ymin = mappedcoords[i][1];
+                    } else if (mappedcoords[i][1] > ymax) {
+                        ymax = mappedcoords[i][1];
+                    }
                 }
             } else {
                 var mappedcoords = [];
                 for (var i=0; i<coords.length; i++) {
                     mappedcoords[i] = [Math.round(coords[i][0])+shiftx,Math.round(coords[i][1])+shifty];
+                    if (mappedcoords[i][0] < xmin) {
+                        xmin = mappedcoords[i][0];
+                    } else if (mappedcoords[i][0] > xmax) {
+                        xmax = mappedcoords[i][0];
+                    }
+                    if (mappedcoords[i][1] < ymin) {
+                        ymin = mappedcoords[i][1];
+                    } else if (mappedcoords[i][1] > ymax) {
+                        ymax = mappedcoords[i][1];
+                    }
                 }
             }
 
             var mesh = [];
             var blankLine = "";
-            for (var i=0; i<xmax; i++) { //make blank mesh
+            for (var i=0; i<xmax+1; i++) { //make blank mesh
                 blankLine += Physics.defaultSpaceChar;
             }
-            for (var i=0; i<ymax; i++) {
+            for (var i=0; i<ymax+1; i++) {
                 mesh[i] = JSON.parse(JSON.stringify(blankLine));
             }
             for (var i=0; i<mappedcoords.length; i++) {
@@ -720,7 +799,7 @@ var Physics = {
 
             return new Physics.shape("custom", {mesh: mesh, x: xmin, y: ymin});
         }
-        /*I leave this here as a tribute to when this didn't work. Whoever finds this is awesome! (this code renders coords directly to screen)
+        /*dramatic music plays* I leave this here as a tribute to when this didn't work. Whoever finds this is awesome! (this code renders coords directly to screen)
             var wstr = "";
             var buf = [];
             for (var i=0; i<Physics.width; i++) {

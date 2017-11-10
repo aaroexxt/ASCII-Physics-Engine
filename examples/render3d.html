@@ -12,41 +12,34 @@
         <script>
             Physics.element = ID("phys");
             Physics.init();
+            var stats = new Stats(); //initialize stats counter in top left
+            stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+            document.body.appendChild( stats.dom );
+            stats.dom.style.position = "absolute";
+            stats.dom.style.left = (window.innerWidth-stats.dom.offsetWidth)+"px";
             //Physics.debugMode = true;
-            Physics.ignoreMeshSize = true;
-            var box = new Physics.shape3d("cube",{height: 3, gravity: false, width: 3, depth: 3, character: "*", x: 5, y: 25, z: 10});
-            var canvas = document.createElement("canvas");
-            canvas.zIndex = 10000;
-            canvas.setAttribute("width", window.innerWidth);
-            canvas.setAttribute("height", window.innerHeight);
-            canvas.setAttribute("style", "position: absolute; x:0; y:0;");
-            document.body.appendChild(canvas);
+            //Physics.ignoreMeshSize = true;
+
+            var camera = new Physics.cameras.perspective(300);
+
+            var cube = new Physics.shape3d("cube",{height: 3, gravity: false, width: 3, depth: 3, camera: camera, character: "*", x: 17, y: 25, z: 10});
+            
+            var maxy = Physics.height-cube.y-cube.height-20;
+            var miny = 0;
+            var dir = true;
             var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function() {
-                console.log("frame reached!");
-                //box.rotate(box.center, -Math.PI / 720, Math.PI / 720);
-                var wstr = "";
-                var buf = [];
-                for (var i=0; i<Physics.width; i++) {
-                    wstr+=" ";
-                }
-                for (var i=0; i<Physics.height; i++) {
-                    buf[i] = wstr;
-                }
-                for (var i=0; i<box.coords.length; i++) {
-                    buf[box.coords[i][1]] = buf[box.coords[i][1]].replaceAt(box.coords[i][0],"*");
-                }
-                var rs = "";
-                for (var i=0; i<buf.length; i++) { //write it to string to optimize writing calls
-                    rs+=buf[i]+Physics.defaultNewlineChar;
-                }
-                Physics.element.innerHTML = rs;
-                /*var ctx = canvas.getContext("2d");
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                for (var i=0; i<box.coords.length; i++) {
-                    ctx.fillRect(box.coords[i][0],box.coords[i][1],1,1);
-                }*/
-            }});
-            box.dilate(3);
+                stats.begin();
+                //console.log("frame reached!");
+                //cube.x = Physics.width/2-cube.width;
+                //cube.y = Physics.height/2-cube.height;
+                if (cube.y >= maxy) {dir = false;} else if (cube.y <= miny) {dir=true;}
+                cube.y = (dir) ? cube.y+0.5 : cube.y-0.5;
+                stats.end();
+            }},cube);
+            cube.dilate(3);
+            cube.translate(cube.x-(Physics.width/2),-10,0);
+            cube.y = 0;
+            cube.controlRaw(2);
             loop.start();
             //setTimeout(function(){loop.stop()},5000);
         </script>

@@ -6,6 +6,8 @@ To download, simply clone the repository to your computer or click the green "Cl
 
 # Use
 To use, you must first include the libraries in html, like so:
+
+
     ```<script src="/path/to/physics.js"></script>
     <script src="/path/to/helpLib.js"></script>
     <script src="/path/to/stats.js"></script>```

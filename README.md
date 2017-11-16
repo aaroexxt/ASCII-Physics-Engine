@@ -6,18 +6,26 @@ To download, simply clone the repository to your computer or click the green "Cl
 
 # Use
 This short section will provide a basic tutorial on how to use this library.
+If you want to see a completed example of a setup, go to [the boilerplate file](https://github.com/aaroexxt/ASCII-Physics-Engine/blob/master/examples/boilerplate.html)
 ### Setup
-To use, you must first include the libraries in html, like so:
+To use, you must first include the required libraries under the html ```<head>``` tag, like so:
 
     <script src="/path/to/physics.js"></script>
     <script src="/path/to/helpLib.js"></script>
     <script src="/path/to/stats.js"></script>
+    
+Also, you should include a meta tag (in the ```<head>``` tag as well) for utf-8 so that you can display all utf-8 characters. If you want to display non-standard characters, this is important.
+
+    <meta charset="utf-8">
+    
 In the body tag, you need to include a ```<pre>``` element for the actual place where the graphics will be rendered. Give it an ID so that it can be selected later easier.
 
-    <pre id="phy
+    <pre id="phys"></pre>
+
+And that's it, setup is done!
 
 ### Initialize Scene
-To initialize the physics library, you need to make a . In 
+To initialize the physics library, you first . In 
 
 # Demos
 [Platformed](https://aaronbecker.tech/code/platformedv5)

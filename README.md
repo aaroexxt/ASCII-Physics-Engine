@@ -25,11 +25,25 @@ In the body tag, you need to include a ```<pre>``` element for the actual place 
 And that's it, setup is done!
 
 ### Initialization
-To initialize the physics library, you first must set the element and initialize. In the last step, we set the element to a ```<pre>``` element with the ID "phys".
+To initialize the physics library, you first must set the element and initialize the library. In the last step, we set the element to a ```<pre>``` element with the ID "phys". Inside a new ```<script>``` tag, add the code:
 
     Physics.element = doocument.getElementById("phys");
     Physics.init();
 
+### Create Shape - 2D
+To create a shape in 2d space, you need to make a new instance of the ```Physics.shape()``` class. This may sound complicated, but it is actually pretty simple.
+There are 12 options that apply to all shapes. This may seem like a lot, but only 3 or 4 are used regularly.
+The full list of options includes:
+
+Option | Value Passed | Effect
+|---|---|---
+| x | Integer | X position on screen |
+| y | Integer | Y position on screen |
+gravity -- boolean, 
+
+### Create Shape - 3D
+
+### Render!
 # Demos
 [Platformed](https://aaronbecker.tech/code/platformedv5)
 

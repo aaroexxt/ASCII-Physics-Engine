@@ -35,12 +35,37 @@ To create a shape in 2d space, you need to make a new instance of the ```Physics
 There are 12 options that apply to all shapes. This may seem like a lot, but only 3 or 4 are used regularly.
 The full list of options includes:
 
-Option | Value Passed | Effect
+Option | Type of Value Passed | Effect
 |---|---|---
 | x | Integer | X position on screen |
 | y | Integer | Y position on screen |
-gravity -- boolean, 
+| character | Char | Character that shape is rendered with |
+| gravity | Boolean | Whether shape is affected by gravity |
+| collide | Boolean | Whether shape can be collided with |
+| enableUp | Boolean | Whether shape can be moved up in control functions |
+| enableDown | Boolean | Whether shape can be moved down in control functions |
+| enableLeft | Boolean | Whether shape can be moved left in control functions |
+| enableRight | Boolean | Whether shape can be moved right in control functions |
+| color | String | Color to render shape in when experimental color rendering mode is enabled |
+| overrideRenderLimit | Boolean | Whether shape is subjected to fixed framerate & interpolating |
+| replaceWithSpace | Boolean | If shape is rendering over another shape, chars that belong to both shapes will be written over with a space |
 
+If you forget to include an option, all options default to a certain value, so the shape can still be used.
+
+##### Types of Shapes
+circle triangle custom line box
+There are 4 types of default shapes that are currently supported by this engine: Circles, Triangles, Rectangles, and Lines. Each has special properties in addition to the ones above that change their characteristics.
+
+In addition to the 4 base types of shapes, there is one additional type, called custom. To use this, you don't need to specify a width, height, length, or any options about shape. Instead, supply a mesh options that contains characters in an array by line. Since the shape below is not any of the previous types, it will need to specified as a custom mesh.
+(***)
+  |  
+|---|
+| | |
+  |  
+  |  
+-| |-
+
+To render this, you first need to make into an array with each line as another argument. The shape above would become: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\].
 ### Create Shape - 3D
 
 ### Render!

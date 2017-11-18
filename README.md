@@ -35,7 +35,7 @@ To create a shape in 2d space, you need to make a new instance of the ```Physics
 There are 12 options that apply to all shapes. This may seem like a lot, but only 3 or 4 are used regularly.
 The full list of options includes:
 
-Option | Type of Value Passed | Effect
+Option | Type of Value Passed | Effect |
 |---|---|---
 | x | Integer | X position on screen |
 | y | Integer | Y position on screen |
@@ -53,10 +53,16 @@ Option | Type of Value Passed | Effect
 If you forget to include an option, all options default to a certain value, so the shape can still be used.
 
 ##### Types of Shapes
-circle triangle custom line box
 There are 4 types of default shapes that are currently supported by this engine: Circles, Triangles, Rectangles, and Lines. Each has special properties in addition to the ones above that change their characteristics.
 
-In addition to the 4 base types of shapes, there is one additional type, called custom. To use this, you don't need to specify a width, height, length, or any options about shape. Instead, supply a mesh options that contains characters in an array by line. Since the shape below is not any of the previous types, it will need to specified as a custom mesh.
+| Type of Shape | Name When Constructing | Required Option 1 | Required Option 2 | Required Option 3 | Effect
+|---|---|
+| Circle | circle | radius | filled | | Radius sets radius of circle to draw; filled sets whether the circle is filled or not. |
+| Triangle | triangle | height | width | | Height sets height of triangle; width is width of triangle |
+| Rectangle | rect | height | width | filled | Height sets height of rectangle; width sets width; filled sets whether rectangle is filled or not |
+| Line | line | length | | | Length sets length of line |
+
+In addition to the 4 base types of shapes, there is one additional type, called custom. To use this, you don't need to specify a width, height, length, or any options that define the size shape. Instead, supply a mesh options that contains characters in an array by line. Since the shape below is not any of the previous types, it will need to specified as a custom mesh.
 
     (***)
       |  
@@ -66,7 +72,7 @@ In addition to the 4 base types of shapes, there is one additional type, called 
       |  
     -| |-
 
-To render this, you first need to make into an array with each line as another argument. The shape above would become: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\]. 
+To render this, you first need to make into an array with each line as another argument. The shape above would become the array: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\]. Then, you would pass it 
 ### Create Shape - 3D
 
 ### Render!

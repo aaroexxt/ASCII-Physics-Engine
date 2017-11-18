@@ -1,12 +1,12 @@
-# ASCII-Physics-Engine
-Physics.js is a vanilla JavaScript-based ASCII rendering engine that runs fully in text, no <canvas> or <video> element required. The only dependency is a browser with JavaScript and the script HelpLib.js, it even runs on my kindle paperwhite!
+# ASCII Physics Engine
+Physics.js is a vanilla JavaScript-based ASCII rendering engine that runs fully in text, no <canvas> or <video> element required. The only dependency is a browser with JavaScript and the script HelpLib.js, it even runs on my Kindle PaperWhite!
 
 # Installation
 To download, simply clone the repository to your computer or click the green "Clone or Download" and select "Download ZIP". The library is contained in dist/unminified for the raw version with comments, and dist/minified for the minified version.
 
 # Basic Tutorial
-This short section will provide a basic tutorial on how to use this library.
-If you want to see a completed example of a setup, go to [the boilerplate file](https://github.com/aaroexxt/ASCII-Physics-Engine/blob/master/examples/boilerplate.html).
+This section will provide a basic tutorial on how to use this library.
+If you want to see a completed example of a setup, first go to [the boilerplate file](https://github.com/aaroexxt/ASCII-Physics-Engine/blob/master/examples/boilerplate.html).
 ### Setup
 To use, you must first include the required libraries under the html ```<head>``` tag, like so:
 
@@ -93,6 +93,8 @@ Known Bugs:
 1) X, Y, and Z positions don't line up with actual X Y and Z
 2) shape3d.rotateAxis and shape3d.rotatePoint don't really work yet, they throw random errors and skew points
 3) Not optimized yet, 10+ shapes updated on every frame = low framerate :(
+
+TODO REST
 
 ### Render!
 Once you have created your shape(s) of choice, you need to render them to the screen! **Make sure you have called Physics.init() and set Physics.element before rendering, otherwise the rendering will not work.**

@@ -65,7 +65,7 @@ There are 4 types of default shapes that are currently supported by this engine:
 | Type of Shape | Name When Constructing | Required Option 1 | Required Option 2 | Required Option 3 | Effect |
 |---|---|---|---|---|---|
 | Circle | circle | radius | filled | | Radius sets radius of circle to draw; filled sets whether the circle is filled or not. |
-| Triangle | triangle | height | width | | Height sets height of triangle; width is width of triangle |
+| Triangle | triangle | height | width | | Height sets height of triangle; width is width of triangle **NOTE: Width must be height*2.**|
 | Rectangle | rect | height | width | filled | Height sets height of rectangle; width sets width; filled sets whether rectangle is filled or not |
 | Line | line | length | | | Length sets length of line |
 
@@ -84,11 +84,48 @@ To render this, you first need to make into an array with each line as another a
 
 Now that we have the mesh array, the final statement would look like this:
 
-    var customman = new Physics.shape("custom",{mesh: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\], x: 0, y: 0});
+    var customasciidude = new Physics.shape("custom",{mesh: ["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"], x: 0, y: 0});
     
 ### Create Shape - 3D
-Now that you know how to render 2d shapes, let's move on to 3d! ***The 3d library is somewhat experimental at the moment. There are only two shapes currently supported, the cube and the pyramid. The rendering works, h
+Now that you know how to render 2d shapes, let's move on to 3d! ***The 3d library is somewhat experimental at the moment. There are only two shapes currently supported, the cube and the pyramid. There are several known bugs, they are listed below.***
+Known Bugs:
+1) X, Y, and Z positions don't line up with actual X Y and Z
+2) shape3d.rotateAxis and shape3d.rotatePoint don't really work yet, they throw random errors and skew points
+3) Not optimized yet, 10+ shapes updated on every frame = low framerate :(
+
 ### Render!
+Once you have created your shape(s) of choice, you need to render them to the screen! **Make sure you have called Physics.init() and set Physics.element before rendering, otherwise the rendering will not work.**
+
+Rendering is simple. Let's say we had 2 shapes, called 'awesomerectangle' and 'sometriangle'.
+
+    var awesomerectangle = new Physics.shape("rect",{width: 5, height: 5, x: 0, y: 0, character: "*"});
+    var sometriangle = new Physics.shape("triangle",{width: 5, height: 5, x: 10, y: 10, character: "^"});
+Now, how do we render these? It is pretty simple. Just call Physics.render on them and they will be rendered!
+
+    Physics.render(awesomerectangle,sometriangle);
+If you are doing this demo live, you should see your two shapes pop up onscreen.
+#### Render Loops
+Ok, so now you know how to construct shapes, and how to render them. But, they only update every time the Physics.render function is called? To fix this problem, we should implement a rendering loop. This loop will automatically render these shapes for you.
+The Physics.renderLoop function only requires 1 argument inside a object: the fps.
+| Option for RenderLoop | Type of Value | Effect |
+|---|---|---|
+| fps | Integer | Sets time, in updates per second, that the loop will be updated. **NOTE: Since this uses the "requestAnimationFrame" function at heart, the loop is constrained to 60fps max. If you want a higher FPS, setup a loop using a setInterval function.** |
+| collision | Boolean | Sets whether loop includes collision detection (if not required, set to false for better rendering times |
+| onFrame | Function | A function that is called every frame. Optional argument that passes in the loop constructor for type. |
+
+An example of a completed render loop: 
+    
+    var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function(parentloop) { //create a new renderloop
+                console.log("frame reached! fps: "+parentloop.options.fps); //every frame just log a simple message
+    }},awesomerectangle,sometriangle); //renderloop will render shapes
+    loop.start();
+Notice the ```,awesomerectangle,sometriangle``` statement at the end? To actually render shapes, you need to pass in these shapes at the end. One simple render loop could look like this:
+
+    var loop = new Physics.renderLoop({fps: 60},awesomerectangle,sometriangle); //renderloop will render shapes
+    loop.start();
+This loop will try render the shapes at 60fps.
+In addition, the loop.start() function at the end actually starts the loop. If you want to stop the loop, use ```loop.stop();```. To restart it, simply use ```loop.start();``` again.
+
 # Demos
 [Platformed](https://aaronbecker.tech/code/platformedv5)
 

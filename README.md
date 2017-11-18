@@ -32,7 +32,13 @@ To initialize the physics library, you first must set the element and initialize
 
 ### Create Shape - 2D
 To create a shape in 2d space, you need to make a new instance of the ```Physics.shape()``` class. This may sound complicated, but it is actually pretty simple.
-There are 12 options that apply to all shapes. This may seem like a lot, but only 3 or 4 are used regularly.
+To start off with an example, if I wanted to construct a rectangle that is 12 by 12 characters wide and tall, and displayed with the letter "y", I would type:
+
+    var yayitworks = new Physics.shape("rect",{width: 12, height: 12, x: 0, y: 0, character: "y"});
+    
+So what does this code mean? The ```Physics.shape()``` function takes 2 arguments. The first is the type of shape, of which there are 4 prebuilt ones. (This will be explained in the next section). The second is a "options" array, where you define several options that you need to construct the shape.
+
+There are 12 options that apply to **all shapes**. This may seem like a lot, but only 3 or 4 are used regularly.
 The full list of options includes:
 
 Option | Type of Value Passed | Effect |
@@ -54,6 +60,7 @@ If you forget to include an option, all options default to a certain value, so t
 
 ##### Types of Shapes
 There are 4 types of default shapes that are currently supported by this engine: Circles, Triangles, Rectangles, and Lines. Each has special properties in addition to the ones above that change their characteristics.
+**IMPORTANT: All of the properties stated above apply to these shapes! These properties are the ones that apply only to each type of shape.**
 
 | Type of Shape | Name When Constructing | Required Option 1 | Required Option 2 | Required Option 3 | Effect |
 |---|---|---|---|---|---|
@@ -62,6 +69,7 @@ There are 4 types of default shapes that are currently supported by this engine:
 | Rectangle | rect | height | width | filled | Height sets height of rectangle; width sets width; filled sets whether rectangle is filled or not |
 | Line | line | length | | | Length sets length of line |
 
+##### Using the "Custom" Shape Type
 In addition to the 4 base types of shapes, there is one additional type, called custom. To use this, you don't need to specify a width, height, length, or any options that define the size shape. Instead, supply a mesh options that contains characters in an array by line. Since the shape below is not any of the previous types, it will need to specified as a custom mesh.
 
     (***)
@@ -72,9 +80,14 @@ In addition to the 4 base types of shapes, there is one additional type, called 
       |  
     -| |-
 
-To render this, you first need to make into an array with each line as another argument. The shape above would become the array: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\]. Then, you would pass it 
-### Create Shape - 3D
+To render this, you first need to make into an array with each line as another argument. The shape above would become the array: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\]. Then, instead of passing a "width", "height", or "length" property, you would pass it the above array as the "mesh" option.
 
+Now that we have the mesh array, the final statement would look like this:
+
+    var customman = new Physics.shape("custom",{mesh: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\], x: 0, y: 0});
+    
+### Create Shape - 3D
+Now that you know how to render 2d shapes, let's move on to 3d! ***The 3d library is somewhat experimental at the moment. There are only two shapes currently supported, the cube and the pyramid. The rendering works, h
 ### Render!
 # Demos
 [Platformed](https://aaronbecker.tech/code/platformedv5)

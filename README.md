@@ -36,7 +36,7 @@ There are 12 options that apply to all shapes. This may seem like a lot, but onl
 The full list of options includes:
 
 Option | Type of Value Passed | Effect |
-|---|---|---
+|---|---|---|
 | x | Integer | X position on screen |
 | y | Integer | Y position on screen |
 | character | Char | Character that shape is rendered with |
@@ -55,8 +55,8 @@ If you forget to include an option, all options default to a certain value, so t
 ##### Types of Shapes
 There are 4 types of default shapes that are currently supported by this engine: Circles, Triangles, Rectangles, and Lines. Each has special properties in addition to the ones above that change their characteristics.
 
-| Type of Shape | Name When Constructing | Required Option 1 | Required Option 2 | Required Option 3 | Effect
-|---|---|
+| Type of Shape | Name When Constructing | Required Option 1 | Required Option 2 | Required Option 3 | Effect |
+|---|---|---|---|---|---|
 | Circle | circle | radius | filled | | Radius sets radius of circle to draw; filled sets whether the circle is filled or not. |
 | Triangle | triangle | height | width | | Height sets height of triangle; width is width of triangle |
 | Rectangle | rect | height | width | filled | Height sets height of rectangle; width sets width; filled sets whether rectangle is filled or not |

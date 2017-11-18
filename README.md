@@ -108,6 +108,7 @@ If you are doing this demo live, you should see your two shapes pop up onscreen.
 #### Render Loops
 Ok, so now you know how to construct shapes, and how to render them. But, they only update every time the Physics.render function is called? To fix this problem, we should implement a rendering loop. This loop will automatically render these shapes for you.
 The Physics.renderLoop function only requires 1 argument inside a object: the fps.
+
 | Option for RenderLoop | Type of Value | Effect |
 |---|---|---|
 | fps | Integer | Sets time, in updates per second, that the loop will be updated. **NOTE: Since this uses the "requestAnimationFrame" function at heart, the loop is constrained to 60fps max. If you want a higher FPS, setup a loop using a setInterval function.** |

@@ -85,7 +85,8 @@ To render this, you first need to make into an array with each line as another a
 Now that we have the mesh array, the final statement would look like this:
 
     var customasciidude = new Physics.shape("custom",{mesh: ["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"], x: 0, y: 0});
-    
+
+***Note: If you are wondering why the mesh looks a little squished, it's because the engine has no line spacing between lines to make rendering geometry look better. To fix this, you may want to run the command ```Physics.element.style.lineHeight = String(Physics.initialLineHeight);``` This will make it look better, but geometry will look worse.
 ### Create Shape - 3D
 Now that you know how to render 2d shapes, let's move on to 3d! ***The 3d library is somewhat experimental at the moment. There are only two shapes currently supported, the cube and the pyramid. There are several known bugs, they are listed below.***
 Known Bugs:

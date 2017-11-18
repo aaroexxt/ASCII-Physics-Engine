@@ -58,7 +58,7 @@ There are 4 types of default shapes that are currently supported by this engine:
 
 In addition to the 4 base types of shapes, there is one additional type, called custom. To use this, you don't need to specify a width, height, length, or any options about shape. Instead, supply a mesh options that contains characters in an array by line. Since the shape below is not any of the previous types, it will need to specified as a custom mesh.
 
-    \(***\)
+    (***)
       |  
     |---|
     | | |
@@ -66,7 +66,7 @@ In addition to the 4 base types of shapes, there is one additional type, called 
       |  
     -| |-
 
-To render this, you first need to make into an array with each line as another argument. The shape above would become: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\].
+To render this, you first need to make into an array with each line as another argument. The shape above would become: \["(***)","  |  ","|---|","| | |","  |  ","  |  ","-| |-"\]. 
 ### Create Shape - 3D
 
 ### Render!

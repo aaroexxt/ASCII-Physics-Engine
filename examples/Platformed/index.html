@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Physics!</title>
+        <script src="physics.js"></script>
+        <script src="audio.js"></script>
+        <script src="helpLib.js"></script>
+        <script src="stats.js"></script>
+        <meta charset="utf-8">
+        <style>
+            pre span .red: {
+                color: red;
+            }
+            pre span .orange: {
+                color: orange;
+            }
+            pre span .yellow: {
+                color: yellow;
+            }
+            pre span .green: {
+                color: green;
+            }
+            pre span .blue: {
+                color: blue;
+            }
+            pre span .indigo: {
+                color: indigo;
+            }
+            pre span .violet: {
+                color: violet;
+            }
+        </style>
+    </head>
+    <body style="margin: 0; height: 100%; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+        <button onclick="if (document.getElementById('settings').style.display == 'none') {document.getElementById('settings').style.display = 'block'; ID('phys').style.display = 'none'; ID('jmpr').style.display = 'none'; this.innerHTML = 'Hide Settings';} else {document.getElementById('settings').style.display = 'none'; ID('phys').style.display = 'block'; ID('jmpr').style.display = 'block'; this.innerHTML = 'Show Settings'}" style="position: absolute; top: 2px; left: 60px;">Show Settings</button>
+        <div id="jmpr">
+            <p style="position: absolute; top: 2px; left: 160px; margin: 0">Jump ready: </p>
+            <progress id="jmp" value="0" min="0" max="1000" style="position: absolute; top: 2px; left: 245px;"></progress>
+        </div>
+        <div id="settings" style="display:none; text-align: center; cursor: auto;">
+            <br>
+            <label for="collisionacc">Collision Accuracy (lower is more accurate):</label>
+            <input type="range" name="collisionacc" id="colacc" value="0.5" step="0.25" min="0.5" max="15" onchange="document.getElementById('colacclb').innerHTML = this.value;" oninput="document.getElementById('colacclb').innerHTML = this.value;">
+            <em id="colacclb" style="font-style: normal;">0.5</em>
+            <br>
+            <label for="collisionchk">Frames before Collision is Checked:</label>
+            <input type="range" name="collisionchk" id="colchk" value="1" min="1" max="10" onchange="document.getElementById('colchklb').innerHTML = this.value;" oninput="document.getElementById('colchklb').innerHTML = this.value;">
+            <em id="colchklb" style="font-style: normal;">1</em>
+            <br>
+            <label for="fps">FPS Throttling (for slower devices):</label>
+            <input type="range" name="fps" id="fps" value="60" min="1" max="120" onchange="document.getElementById('fpslb').innerHTML = this.value;" oninput="document.getElementById('fpslb').innerHTML = this.value;">
+            <em id="fpslb" style="font-style: normal;">50</em>
+            <br>
+            <label for="mv">Music Volume:</label>
+            <input type="range" name="mv" id="mv" value="100" min="0" max="100" onchange="document.getElementById('mvlb').innerHTML = this.value+'%';" oninput="document.getElementById('mvlb').innerHTML = this.value+'%';">
+            <em id="mvlb" style="font-style: normal;">100%</em>
+            <br>
+            <label for="tbj">Time Between Jumps:</label>
+            <input type="range" name="tbj" id="tbj" value="900" min="0" max="5000" onchange="document.getElementById('tbjlb').innerHTML = this.value+'ms';" oninput="document.getElementById('tbjlb').innerHTML = this.value+'ms';">
+            <em id="tbjlb" style="font-style: normal;">1000ms</em>
+            <br>
+            <label for="rec">(BETA, Rendering may be slow) Render in color?</label>
+            <input type="checkbox" name="rec" id="rec">
+            <br>
+            <p>Wacky Effects :)</p>
+            <label for="fbc">Clear frameBuffer on every frame?</label>
+            <input type="checkbox" name="fbc" id="fbc" checked>
+            <br>
+            <label for="allgrav">Apply gravity to every shape?</label>
+            <input type="checkbox" name="allgrav" id="allgrav">
+            <br>
+            <label for="allgrav">Show cursor?</label>
+            <input type="checkbox" name="cursor" id="showcursor" onchange="showcursor = this.checked;">
+            <br>
+            <p>Information: </p>
+            <label for="musictr">Current music track playback: </label>
+            <progress name="musictr" id="musictr" value="0" max="1"></progress>
+            <em id="musictrlb" style="font-style: normal;">0</em>
+            <br>
+            <label for="collef">Collision checking efficiency: </label>
+            <span id="collef"></span>
+            <br>
+            <label for="pixpf">Characters rendered per frame: </label>
+            <span id="pixpf"></span>
+        </div>
+        <div id = "lvlmkropts" style="position: absolute; top: 2px; left: 420px; cursor: auto; display: none;">
+            <span>Levelmaker options:</span style="padding: 0; margin: 0; position: absolute; top: 2px;">
+            <button onclick="if (enablePlayerEditor) {this.innerHTML = 'Enable Player'; enablePlayerEditor = false;} else {this.innerHTML = 'Disable Player'; player.x = 0; player.y = 0; enablePlayerEditor = true;}" style="position: absolute; left: 150px; top: 2px; width: 100%;">Enable Player</button>
+        </div>
+        <pre id="phys"></pre>
+    </body>
+    <script>
+        Physics.element = ID("phys");
+        Physics.init();
+        Physics.element.style.lineHeight = String(Physics.initialLineHeight);
+        setTimeout(function(){
+            console.log("   ▄███████▄  ▄█          ▄████████     ███        ▄████████  ▄██████▄     ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ ████████▄  \n  ███    ███ ███         ███    ███ ▀█████████▄   ███    ███ ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ███   ▀███ \n  ███    ███ ███         ███    ███    ▀███▀▀██   ███    █▀  ███    ███   ███    ███ ███   ███   ███   ███    █▀  ███    ███ \n  ███    ███ ███         ███    ███     ███   ▀  ▄███▄▄▄     ███    ███  ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███    ███ \n▀█████████▀  ███       ▀███████████     ███     ▀▀███▀▀▀     ███    ███ ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███    ███ \n  ███        ███         ███    ███     ███       ███        ███    ███ ▀███████████ ███   ███   ███   ███    █▄  ███    ███ \n  ███        ███▌    ▄   ███    ███     ███       ███        ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ▄███ \n ▄████▀      █████▄▄██   ███    █▀     ▄████▀     ███         ▀██████▀    ███    ███  ▀█   ███   █▀    ██████████ ████████▀  \n             ▀                                                            ███    ███                                         ");
+            //console.log("                         ___                                                                        \n_-_ _,,                 -   -_,                               _-_ _,,              ,,               \n   -/  )               (  ~/||    _                              -/  )             ||               \n  ~||_<   '\\\\/\\\\       (  / ||   < \\, ,._-_  /'\\\\ \\\\/\\\\         ~||_<    _-_   _-_ ||/\\  _-_  ,._-_ \n   || \\\\   || ;'        \\/==||   /-||  ||   || || || ||          || \\\\  || \\\\ ||   ||_< || \\\\  ||   \n   ,/--||  ||/          /_ _||  (( ||  ||   || || || ||          ,/--|| ||/   ||   || | ||/    ||   \n  _--_-'   |/          (  - \\\\,  \\/\\\\  \\\\,  \\\\,/  \\\\ \\\\         _--_-'  \\\\,/  \\\\,/ \\\\,\\ \\\\,/   \\\\,  \n (        (                                                    (                                    \n           -_-                                                                                      ");
+            gameAudio.fade("in",3000, "");
+            gameAudio.play();
+            console.typeable("collisioncheck","console.log(\"Type collisioncheck into the console to test collisions. (mostly for me) Note that the object being tested must be named \'player\'.\");","console.log(\"Testing collisions...\"); player.y = 1000; player.x = -1000; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft); setTimeout(function(){player.y = 10; player.x = 10; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player still colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft);},100);");
+            console.log("[AUDIOMANAGER] Audio initialized");
+            console.log("PHYSICS INITIALIZED");
+            beginGame(60); //start game at 30fps
+            console.log("%cWelcome to Platformed, a 2d platformer game by Aaron Becker. I hope you enjoy it! Also, if you see this, you're awesome :)","color: #f49b42");
+        })
+        /*window.onresize = function(){
+            Physics.init();
+            Physics.clear();
+            Physics.render(platform,platform2,platform3,player,tri);
+        }*/
+        var MAXIMIZEFPS = false;
+
+
+        if (window.location.href.indexOf("aaronbecker.tech") < 0) {
+            setTimeout(function(){
+                gameAudio.pause();
+            },1000);
+        }
+        var player = new Physics.shape("box",{height: 8, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y:0});
+        var titleplayer = new Physics.shape("box",{height: 6, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y: 0});
+        var enablePlayerEditor = false;
+
+        var oldEPE = false;
+
+        var titlemusic = new gameAudio.track("music/title.mp3", "title", true, "titlemusic");
+
+        var level = new gameAudio.track("music/level.mp3", "level", false, "levelmusic");
+        var level2 = new gameAudio.track("music/level2.mp3", "level2", false, "levelmusic");
+        var level4 = new gameAudio.track("music/level3.mp3", "level3", false, "levelmusic");
+        var level6 = new gameAudio.track("music/level4.mp3", "level4", false, "levelmusic");
+
+        var level1 = new gameAudio.track("music/level.mp3", "levelc", false, "levelmusic");
+        var level3 = new gameAudio.track("music/level2.mp3", "level2c", false, "levelmusic");
+        var level5 = new gameAudio.track("music/level3.mp3", "level3c", false, "levelmusic");
+        var level7 = new gameAudio.track("music/level4.mp3", "level4c", false, "levelmusic");
+
+        gameAudio.group("levelmusic", level, level1, level2, level3, level4, level5, level6, level7);
+
+        var end = gameAudio.track("music/end.mp3", "end", false, "endmusic");
+        var end2 = gameAudio.track("music/end2.mp3", "end2", false, "endmusic");
+        gameAudio.group("endmusic", end, end2);
+
+        var boss = gameAudio.track("music/boss.mp3", "boss", false, "bossmusic");
+
+        var horror = gameAudio.track("music/horror.mp3", "horror", false, "horrormusic");
+
+        var jump = document.createElement('audio');
+        jump.src = "music/jump.mp3";
+        jump.volume = 0.5;
+
+        var numbers = [
+            new Physics.shape("custom",{mesh:["   ____ ","  / __ \\"," / / / /","/ /_/ / ","\\____/  "], x: 0, y:0, color: "red", overrideRenderLimit: true}), //0
+            new Physics.shape("custom",{mesh:["   ___","  <  /","  / / "," / /  ","/_/   "], x: 0, y:0, color: "orange", overrideRenderLimit: true}), //1
+            new Physics.shape("custom",{mesh:["   ___ ","  |__ \\","  __/ /"," / __/ ","/____/ "], x: 0, y:0, color: "yellow", overrideRenderLimit: true}), //2
+            new Physics.shape("custom",{mesh:["   _____","  |__  /","   /_ < "," ___/ / ","/____/  "], x: 0, y:0, color: "green", overrideRenderLimit: true}), //3
+            new Physics.shape("custom",{mesh:["   __ __","  / // /"," / // /_","/__  __/","  /_/   "], x: 0, y:0, color: "#00ccff", overrideRenderLimit: true}), //4
+            new Physics.shape("custom",{mesh:["    ______","   / ____/","  /___ \\  "," ____/ /  ","/_____/   "], x: 0, y:0, color: "blue", overrideRenderLimit: true}), //5
+            new Physics.shape("custom",{mesh:["   _____","  / ___/"," / __ \\ ","/ /_/ / ","\\____/  "], x: 0, y:0, color: "indigo", overrideRenderLimit: true}), //6
+            new Physics.shape("custom",{mesh:[" _____","/__  /","  / / "," / /  ","/_/   "], x: 0, y:0, overrideRenderLimit: true}), //7
+            new Physics.shape("custom",{mesh:["   ____ ","  ( __ )"," / __  |","/ /_/ / ","\\____/  "], x: 0, y:0, overrideRenderLimit: true}), //8
+            new Physics.shape("custom",{mesh:["   ____ ","  / __ \\"," / /_/ /"," \\__, / ","/____/  "], x: 0, y:0, overrideRenderLimit: true}), //9
+            new Physics.shape("custom",{mesh:["    __                   __","   / /   ___ _   _____  / /","  / /   / _ \\ | / / _ \\/ / "," / /___/  __/ |/ /  __/ /  ","/_____/\\___/|___/\\___/_/   "], x: 0, y:0, overrideRenderLimit: true}) //level
+        ];
+        var extranums = [];
+
+        var cursor = new Physics.shape("custom",{mesh:["_"], x:0, y:0});
+
+        var title = {
+            main: new Physics.shape("custom",{mesh:["   ▄███████▄  ▄█          ▄████████     ███        ▄████████  ▄██████▄     ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ ████████▄  ","  ███    ███ ███         ███    ███ ▀█████████▄   ███    ███ ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ███   ▀███ ","  ███    ███ ███         ███    ███    ▀███▀▀██   ███    █▀  ███    ███   ███    ███ ███   ███   ███   ███    █▀  ███    ███ ","  ███    ███ ███         ███    ███     ███   ▀  ▄███▄▄▄     ███    ███  ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███    ███ ","▀█████████▀  ███       ▀███████████     ███     ▀▀███▀▀▀     ███    ███ ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███    ███ ","  ███        ███         ███    ███     ███       ███        ███    ███ ▀███████████ ███   ███   ███   ███    █▄  ███    ███ ","  ███        ███▌    ▄   ███    ███     ███       ███        ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ▄███ "," ▄████▀      █████▄▄██   ███    █▀     ▄████▀     ███         ▀██████▀    ███    ███  ▀█   ███   █▀    ██████████ ████████▀  ","             ▀                                                            ███    ███                                         "], x: 0, color: "#66ccff", y: 0}),
+            subtitle: new Physics.shape("custom",{mesh:["                         ___                                                                        ","_-_ _,,                 -   -_,                               _-_ _,,              ,,               ","   -/  )               (  ~/||    _                              -/  )             ||               ","  ~||_<   '\\\\/\\\\       (  / ||   < \\, ,._-_  /'\\\\ \\\\/\\\\         ~||_<    _-_   _-_ ||/\\  _-_  ,._-_ ","   || \\\\   || ;'        \\/==||   /-||  ||   || || || ||          || \\\\  || \\\\ ||   ||_< || \\\\  ||   ","   ,/--||  ||/          /_ _||  (( ||  ||   || || || ||          ,/--|| ||/   ||   || | ||/    ||   ","  _--_-'   |/          (  - \\\\,  \\/\\\\  \\\\,  \\\\,/  \\\\ \\\\         _--_-'  \\\\,/  \\\\,/ \\\\,\\ \\\\,/   \\\\,  "," (        (                                                    (                                    ","           -_-                                                                                      "], x:0, y:10}),
+            startbox: [],
+            optsbox: [],
+            start: new Physics.shape("custom",{mesh:["  ___ _            _   "," / __| |_ __ _ _ _| |_ "," \\__ \\  _/ _` | '_|  _|"," |___/\\__\\__,_|_|  \\__|","                       "], x:Physics.width-33, y:25}),
+            opts: new Physics.shape("custom",{mesh:["   ___       _   _             ","  / _ \\ _ __| |_(_)___ _ _  ___"," | (_) | '_ \\  _| / _ \\ ' \\(_-<","  \\___/| .__/\\__|_\\___/_||_/__/","       |_|                     "], x: 10, y:25}),
+            startline: [],
+            rightpoint: new Physics.shape("custom",{mesh:["                      >   ","                       >  ","                        > ","------------------------->","                        > ","                       >  ","                      >   "], x: Physics.width-73, y: Physics.height-27}),
+            leftpoint: new Physics.shape("custom",{mesh:["   <                      ","  <                       "," <                        ","<-------------------------"," <                        ","  <                       ","   <                      "], x: 50, y: Physics.height-27}),
+            makerbox: [],
+            levelmaker: new Physics.shape("custom", {mesh: ["Levelmaker"], x: 0, y: 45})
+
+        }
+        title.main.x = ((Physics.width-title.main.width)/2); //center titles
+        title.subtitle.x = ((Physics.width-title.subtitle.width)/2);
+        title.levelmaker.x = ((Physics.width-title.levelmaker.width)/2)+1;
+        title.levelmaker.y = title.leftpoint.y+(title.leftpoint.height/2)-1;
+
+
+        title.startbox = new Physics.shape("box",{height: title.start.height+3, width: title.start.width+3, filled: false, character: "*", x: title.start.x-1, y: title.start.y-1}); //set up boxes around text; has to come later because start isn't initalized yet and render order matters
+        title.optsbox = new Physics.shape("box",{height: title.opts.height+3, width: title.opts.width+3, filled: false, character: "*", x: title.opts.x-1, y: title.opts.y-1});
+        title.startline = new Physics.shape("box",{height: 2, width: title.startbox.x-(title.optsbox.x+title.optsbox.width)-10, character: "_", x: title.optsbox.x+title.optsbox.width+5, y: title.start.y+2});
+
+        title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+
+        titleplayer.x = ((Physics.width-titleplayer.width)/2);
+        titleplayer.y = title.startline.y-titleplayer.height;
+
+        var options = {
+            opts: new Physics.shape("custom",{mesh:["   ___       _   _             ","  / _ \\ _ __| |_(_)___ _ _  ___"," | (_) | '_ \\  _| / _ \\ ' \\(_-<","  \\___/| .__/\\__|_\\___/_||_/__/","       |_|                     "], x: 0, y:0}),
+            optsline: [],
+            nf: new Physics.shape("custom",{mesh:["    _   __      __     _____       _      __             ____","   / | / /___  / /_   / __(_)___  (_)____/ /_  ___  ____/ / /","  /  |/ / __ \\/ __/  / /_/ / __ \\/ / ___/ __ \\/ _ \\/ __  / / "," / /|  / /_/ / /_   / __/ / / / / (__  ) / / /  __/ /_/ /_/  ","/_/ |_/\\____/\\__/  /_/ /_/_/ /_/_/____/_/ /_/\\___/\\__,_(_)   "], x: 0, y: 0})
+        }
+        options.opts.x = ((Physics.width-options.opts.width)/2);
+        options.optsline = new Physics.shape("line",{length: options.opts.width, character: "_", x: options.opts.x, y: options.opts.y+options.opts.height});
+        options.nf.x = ((Physics.width-options.nf.width)/2);
+        options.nf.y = ((Physics.height-options.nf.height)/2);
+
+
+        var loading = {
+            loadbox: [],
+            load: new Physics.shape("custom",{mesh:["    __                    ___                          ","   / /   ____  ____ _____/ (_)___  ____ _              ","  / /   / __ \\/ __ `/ __  / / __ \\/ __ `/              "," / /___/ /_/ / /_/ / /_/ / / / / / /_/ /  _    _    _  ","/_____/\\____/\\__,_/\\__,_/_/_/ /_/\\__, /  (_)  (_)  (_) ","                                /____/                 "], x: 0, y: 0})
+        }
+
+        loading.load.x = ((Physics.width-loading.load.width)/2);
+        loading.load.y = ((Physics.height-loading.load.height)/2);
+        loading.loadbox = new Physics.shape("box",{height: loading.load.height+3, width: loading.load.width+3, filled: false, character: "*", x: loading.load.x-2, y: loading.load.y-1});
+
+        var credits = {
+            
+        }
+
+        var editor = {
+            r: new Physics.shape("line",{length:1,character: " ", x: Physics.width, y: 0})
+        }
+
+        var portal = ["    ,----..    ","   /   /   \\   ","  /   .     :  "," .   /   ;.  \\ ",".   ;   /  ` ; ",";   |  ; \\ ; | ","|   :  | ; | ' ",".   |  ' ' ' : ","'   ;  \\; /  | "," \\   \\  ',  /  ","  ;   :    /   ","   \\   \\ .'    ","    `---`      "];
+
+        var lvl1 = {
+            platform: new Physics.shape("line",{length: 20, character: "_", x: 0, y: Physics.height-2}),
+            portal: new Physics.shape("custom",{mesh:portal, x: 7, y: Physics.height-20})
+        }
+
+        var lvl2 = {
+            platform: new Physics.shape("line",{length: Physics.width, character: "_", x: 0, y: Physics.height-2}),
+            portal: new Physics.shape("custom",{mesh:portal, x: Physics.width-7, y: Physics.height-20})
+        }
+
+        var lvl3 = {
+            platform: new Physics.shape("line",{length: 50, character: "_", x: 0, y: Physics.height-2}),
+            platform2: new Physics.shape("line",{length: 20, character: "_", x: 50, y: Physics.height-10}),
+            platform3: new Physics.shape("line",{length: 30, character: "_", x: 70, y: Physics.height-20}),
+            platform4: new Physics.shape("line",{length: 30, character: "_", x: 90, y: Physics.height-34}),
+            tri: new Physics.shape("triangle",{height: 5, character: "⬘", killPlayer: true, x: 74, y: Physics.height-25}),
+            portal: new Physics.shape("custom",{mesh:portal, x: 120, y: Physics.height-45})
+        };
+
+        var lvl4 = {
+            nf: new Physics.shape("custom",{mesh:["    _   __      __     _____       _      __             ____","   / | / /___  / /_   / __(_)___  (_)____/ /_  ___  ____/ / /","  /  |/ / __ \\/ __/  / /_/ / __ \\/ / ___/ __ \\/ _ \\/ __  / / "," / /|  / /_/ / /_   / __/ / / / / (__  ) / / /  __/ /_/ /_/  ","/_/ |_/\\____/\\__/  /_/ /_/_/ /_/_/____/_/ /_/\\___/\\__,_(_)   "], x: 0, y: 0}),
+            portal: new Physics.shape("custom",{mesh:portal, x: Physics.width-7, y: 5}),
+            platform: new Physics.shape("line",{length: 2, character: "_", x: 0, y: 0})
+        }
+        lvl4.platform.x = Physics.width-lvl4.platform.length;
+        lvl4.platform.y = ((Physics.height-1)/2);
+        lvl4.nf.x = ((Physics.width-lvl4.nf.width)/2);
+        lvl4.nf.y = lvl4.nf.height+3;
+
+        var lvl5 = {
+            portal: new Physics.shape("custom",{mesh:["oooo","oooo","oooo","oooo"], x: 0, y: 0}),
+            platform: new Physics.shape("line",{length: Physics.width, character: "_", x: 0, y: Physics.width-2})
+        }
+        lvl5.portal.x = Physics.width-lvl5.portal.width;
+        lvl5.portal.y = ((Physics.height-lvl5.portal.height)/2)+5;
+
+        var lvl6 = {
+
+        }
+
+        var lvl = title;
+        var lvlnum = 0;
+
+        var showcursor = false;
+        var mouseOffsetX = Physics.element.offsetLeft;
+        var mouseOffsetY = Physics.element.offsetTop+100;
+        //var mouseUpdateInterval = 200;
+
+        Physics.clear();
+        titleplayer.controlGravity();
+
+        var stats = new Stats();
+        stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+        document.body.appendChild( stats.dom );
+        stats.dom.style.position = "absolute";
+        stats.dom.style.left = (window.innerWidth-stats.dom.offsetWidth)+"px";
+
+        var collisionchk = 2; //amnt of loops before checking collisions again;
+        var collchkcount = 0;
+        var clearsc = true;
+
+        var frameCount = 0;
+        var fpsset, fpsInterval, startTime, now, then, elapsed;
+        var levelstr;
+        var started = false;
+        var stop = false;
+        function beginGame(fps) {
+            fpsset = fps;
+            fpsInterval = 1000 / fps;
+            then = Date.now();
+            startTime = then;
+            console.log("st: "+startTime);
+            console.log("FPS throttling set to "+fps+" fps");
+            stop = false;
+            if (MAXIMIZEFPS) {
+                try{
+                    clearInterval(gl);
+                } catch(e){}
+                gl = setInterval(function(){
+                    gameLoop();
+                },0);
+            } else {
+                gameLoop();
+            }
+            started = true;
+        }
+        var gl;
+        function setFPS(fps) {
+            fpsset = fps;
+            if (started) {
+                stop = true;
+                started = false;
+                setTimeout(function(){
+                    stop = false;
+                    started = true;
+                    beginGame(fps);
+                },100);
+            } else {
+                beginGame(fps);
+            }
+        }
+        function changeLvl(lnum) {
+            try{
+                ID("lvlmkropts").style.display = "none";
+            }catch(e){}
+            try{
+                lvl = eval("lvl"+lnum);
+                lvlnum = Number(lnum);
+                if (Number(lnum) > 0) {
+                    if (typeof lvl.portal === "undefined") {
+                        console.error("Portal in level undefined, cancelled loading");
+                    } else {
+                        Physics.element.style.lineHeight = String(Physics.lineHeight); //set proper line height of game
+                        player.controlGravity(); //control player
+                        genLevelStr(lnum);
+                    }
+                }
+                player.x = 0;
+                player.y = 10;
+            } catch(e) {
+                try {
+                    lvl = eval(lnum);
+                    lvlnum = -1;
+                    if (lnum == "title" || lnum == "options" || lnum == "loading") {
+                        Physics.element.style.lineHeight = String(Physics.initialLineHeight); //set bigger line height so text is not squished
+                        titleplayer.controlGravity(); //control player
+                        titleplayer.x = 0;
+                        titleplayer.y = 0;
+                        lvlnum = lnum;
+                    }
+                    if (lnum == "editor") {
+                        Physics.element.style.lineHeight = String(Physics.lineHeight); //set proper line height of game
+                        player.controlGravity(); //control player
+                        lvlnum = "editor";
+                    }
+                } catch(e) {
+                    console.error("Level '"+lnum+"' has no data; cancelled loading");
+                }
+            }
+        }
+
+        function genLevelStr(lnum) {
+            levelstr = "Physics.render(false, "
+            var usednums = [];
+            var xpos = numbers[10].width;
+            for (var i=0; i<String(lnum).length; i++) {
+                if (!usednums.contains(String(lnum)[i])) {
+                    numbers[String(lnum)[i]].x = xpos;
+                    xpos+=numbers[String(lnum)[i]].width;
+                    levelstr+="numbers["+String(lnum)[i]+"], ";
+                    usednums[usednums.length] = String(lnum)[i];
+                } else { //number already used deep clone and add to array
+                    extranums[extranums.length] = JSON.parse(JSON.stringify(numbers[String(lnum)[i]]));
+                    extranums[extranums.length-1].UUID = generateUUID();
+                    extranums[extranums.length-1].x = xpos;
+                    xpos+=numbers[String(lnum)[i]].width;
+                    levelstr+="extranums["+(extranums.length-1)+"], ";
+                }
+            }
+            levelstr+="numbers[10]);";
+            return levelstr;
+        }
+        function gameLoop() {
+
+            if (stop) {
+                return;
+            }
+            
+            if (!MAXIMIZEFPS) {
+                requestAnimationFrame(gameLoop);
+            }
+
+            now = Date.now();
+            elapsed = now - then;
+
+            if (elapsed > fpsInterval) {
+                then = now - (elapsed % fpsInterval);
+
+                stats.begin();
+
+                var renderstr = "Physics.render(clearsc,";
+                var collisionstr = "Physics.calculate_collisions(";
+                for (var i=0; i<Object.keys(lvl).length; i++) {
+                    renderstr+="lvl."+Object.keys(lvl)[i]+",";
+                    collisionstr+="lvl."+Object.keys(lvl)[i]+",";
+                }
+                if (lvlnum > 0 || (lvlnum == "editor" && enablePlayerEditor == true)) {
+                    renderstr+="player);";
+                } else if (lvlnum == "title" || lvlnum == 0) {
+                    renderstr+="titleplayer);";
+                } else {
+                    renderstr+=");"
+                }
+                collisionstr+="player);";
+
+                if (collchkcount >= collisionchk) {
+                    if (lvlnum > 0) {
+                        eval(collisionstr); //lots of lag when run on title sequence
+                    } else if (lvlnum == "title" || lvlnum == 0) {
+                        if (titleplayer.y > (title.startline.y-5)) {
+                            titleplayer.momentumY = -0.25;
+                            titleplayer.y-=1;
+                        }
+                        if (titleplayer.y > (title.startline.y+10)) { //custom collisions
+                            titleplayer.momentumY = -3;
+                        }
+                        if (titleplayer.x < (title.optsbox.x+title.optsbox.width)) { //ADD Y CHECK
+                            titleplayer.collisionLeft = true;
+                        } else if (titleplayer.x > (title.startbox.x-titleplayer.width)) {
+                            titleplayer.collisionRight = true;
+                        }
+                        if (typeof relMousePos !== "undefined") {
+                            if (relMousePos.x < (title.makerbox.width+title.makerbox.x) && relMousePos.x > title.makerbox.x && relMousePos.y < (title.makerbox.height+title.makerbox.y) && relMousePos.y > title.makerbox.y) {
+                                if (mouseDown) {
+                                    changeLvl("loading");
+                                    mouseOffsetY = Physics.element.offsetTop
+                                    gameAudio.fade("out", 500, function(){});
+                                    setTimeout(function(){
+                                        gameAudio.pause();
+                                        gameAudio.queueGroup(true, "levelmusic");
+                                        gameAudio.play();
+                                        gameAudio.fade("in", 500, "console.log('Level music playing')");
+                                    },300);
+                                    titleplayer.gravity = false;
+                                    setTimeout(function(){
+                                        changeLvl("editor");
+                                        try{ID("lvlmkropts").style.display = "block";} catch(e){}
+                                        showcursor = true;
+                                    },300);
+                                } else {
+                                    title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "•", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+                                }
+                            } else {
+                                title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+                            }
+                        } else {
+                            console.warn("No mouse movement seen; relMousePos undefined");
+                        }
+                        if (titleplayer.collisionRight && !titleplayer.collisionLeft) { //start
+                            titleplayer.momentumX = 0;
+                            changeLvl("loading");
+                            gameAudio.fade("out", 500, function(){});
+                            setTimeout(function(){
+                                gameAudio.pause();
+                                gameAudio.queueGroup(true, "levelmusic");
+                                gameAudio.play();
+                                gameAudio.fade("in", 500, "console.log('Level music playing')");
+                            },500);
+                            titleplayer.gravity = false;
+                            setTimeout(function(){
+                                changeLvl(1);
+                                titleplayer.gravity = true;
+                            },1000);
+                        } else if (!titleplayer.collisionRight && titleplayer.collisionLeft) { //options
+                            changeLvl("options");
+                        }
+                    }
+                    collchkcount = 0;
+                } else {
+                    collchkcount++;
+                }
+
+                if (lvlnum > 0 && lvlnum != "editor" && lvlnum != "options" && lvlnum != "title") {
+                    eval(renderstr+"; "+levelstr);
+                    if (typeof lvl.portal !== "undefined") {
+                        if (lvl.portal.collisionRight || lvl.portal.collisionLeft || lvl.portal.collisionTop || lvl.portal.collisionBottom) {
+                            changeLvl(lvlnum+1);
+                        }
+                    }
+                } else {
+                    eval(renderstr);
+                }
+
+                if (showcursor) {
+                    cursor.x = relMousePos.x;
+                    cursor.y = relMousePos.y;
+                    Physics.render(false,cursor);
+                    if (document.body.style.cursor != "none") {
+                        document.body.style.cursor = "none";
+                    }
+                } else {
+                    if (document.body.style.cursor == "none") {
+                        document.body.style.cursor = "pointer;"
+                    }
+                }
+
+                stats.end();
+            }
+        }
+
+        var oldvol = 1;
+        setTimeout(function(){
+            setInterval(function(){
+                Physics.collisionAccuracy = Number(document.getElementById("colacc").value);
+                collisionchk = Number(document.getElementById("colchk").value);
+                if (fpsset != Number(document.getElementById("fps").value) && started == true) {
+                    setFPS(Number(document.getElementById("fps").value));
+                }
+                clearsc = (document.getElementById("fbc").checked)?true:false;
+                Physics.allGravity = (document.getElementById("allgrav").checked)?true:false;
+                Physics.renderInColor = (document.getElementById("rec").checked)?true:false;
+                if (oldvol != Number(document.getElementById("mv").value)) {
+                    gameAudio.setVolume(Number(document.getElementById("mv").value));
+                    oldvol = Number(document.getElementById("mv").value);
+                }
+                ID("pixpf").innerHTML = Physics.charsPerFrame;
+                ID("collef").innerHTML = Physics.collisionEfficiency+"%";
+                ID("musictr").value = gameAudio.queue[Object.keys(gameAudio.queue)[gameAudio.queueposition]].currentTime;
+                ID("musictr").max = gameAudio.queue[Object.keys(gameAudio.queue)[gameAudio.queueposition]].duration;
+                ID("musictrlb").innerHTML = String(Math.round(gameAudio.queue[Object.keys(gameAudio.queue)[gameAudio.queueposition]].currentTime*100)/100)+'s /'+String(Math.round(gameAudio.queue[Object.keys(gameAudio.queue)[gameAudio.queueposition]].duration*100)/100)+"s";
+                timeBetweenJumps = Number(ID("tbj").value);
+            },500);
+        },3000);
+        
+        var target = player;
+        setInterval(function(){
+            if (typeof lvl.portal !== "undefined") {
+                //target = lvl.portal;
+            }
+            if (target.collisionBottom) {
+                console.log("target collide: b");
+            } else if (target.collisionTop) {
+                console.log("target collide: t");
+            } else if (target.collisionRight) {
+                console.log("target collide: r");
+            } else if (target.collisionLeft) {
+                console.log("target collide: l");
+            }
+            try{
+                ID("jmp").max = timeBetweenJumps;
+                ID("jmp").value = Number(Date.now()-lastKeyPress);
+            } catch(e){}
+        },10);
+
+        var oldtsuk;
+        setInterval(function(){
+            if (oldtsuk !== timeSinceUpKey) {
+                console.log("time_s: "+timeSinceUpKey);
+                if (timeSinceUpKey > timeBetweenJumps) {
+                    try{
+                        jump.play();
+                    } catch(e) {
+                        console.error("Error playing jump sound on up key press");
+                    }
+                }
+                oldtsuk = timeSinceUpKey;
+            }
+            //gameAudio.pause(); //Why did I do this??? took so long to bugfix, I thought that audioManager was broken :(
+        },100);
+
+    var mousePos, relMousePos;
+
+    document.onmousemove = handleMouseMove;
+
+    function handleMouseMove(event) {
+        var dot, eventDoc, doc, body, pageX, pageY;
+
+        event = event || window.event; // IE-ism
+
+        // If pageX/Y aren't available and clientX/Y are,
+        // calculate pageX/Y - logic taken from jQuery.
+        // (This is to support old IE)
+        if (event.pageX == null && event.clientX != null) {
+            eventDoc = (event.target && event.target.ownerDocument) || document;
+            doc = eventDoc.documentElement;
+            body = eventDoc.body;
+
+            event.pageX = event.clientX +
+              (doc && doc.scrollLeft || body && body.scrollLeft || 0) -
+              (doc && doc.clientLeft || body && body.clientLeft || 0);
+            event.pageY = event.clientY +
+              (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
+              (doc && doc.clientTop  || body && body.clientTop  || 0 );
+        }
+
+        mousePos = {
+            x: event.pageX,
+            y: event.pageY
+        };
+
+        var pos = mousePos;
+        var newx, newy;
+        if (!pos) {
+            console.warn("UpdateMousePos called when no mouse movement was seen");
+        } else {
+            var px = pos.x-=mouseOffsetX;
+            var py = pos.y-=mouseOffsetY;
+            var ppx = window.innerWidth/Physics.width;
+            var ppy = window.innerHeight/Physics.height;
+            newx = Math.round(px/ppx);
+            newy = Math.round(py/ppy);
+            //console.log(newx,newy);
+        }
+
+        relMousePos = {
+            x: newx,
+            y: newy
+        }
+    }
+
+    var mouseDown = false;
+    document.body.onmousedown = function() {
+        mouseDown = true;
+    }
+    document.body.onmouseup = function() {
+        mouseDown = false;
+    }
+        /*setInterval(function(){
+            gameAudio.update();
+        },1000); //update audio if track has ended*/
+
+        /*var counter = 0;
+        var rad = 0;
+        var interval = setInterval(function(){
+            counter++;
+            rad+=0.5;
+            var circle = new Physics.shape("circle",{radius: rad, filled:true, character: "o", x: 50, y: 50});
+            if (counter >= 100) {
+                clearInterval(interval);
+            }
+            Physics.render(false,circle);
+        });*/
+    </script>
+</html>

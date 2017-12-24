@@ -1,0 +1,21 @@
+
+idea: game where you have to stretch the window to complete levels
+
+if:
+distance between 
+var xdist = (arguments[i].updPointTable[b][0]-arguments[j].updPointTable[z][0]);
+var ydist = (arguments[i].updPointTable[b][1]-arguments[j].updPointTable[z][1]);
+((xdist > -Physics.collisionAccuracy && xdist < Physics.collisionAccuracy) && (ydist > -Physics.collisionAccuracy && ydist < Physics.collisionAccuracy))
+
+stuff to do:
+implement weight per character
+frame independent phyics
+fix slow replaceat functions in render
+add collidingwith to collision detection
+middle collision detection w/bounding box to narrow broad->narrow objects even more
+finish type fixes collision detection
+match jump time to timer in top left
+
+done:
+collision detection calculating shapes in j twice fix done
+collision detection calculating shape with itself fix done

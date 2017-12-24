@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Bounce Physics!</title>
+        <title>Pong Physics!</title>
         <script src="../dist/unminified/physics.js"></script>
         <script src="../dist/minified/helpLib.min.js"></script>
         <script src="../dist/minified/stats.min.js"></script>
@@ -13,9 +13,9 @@
             Physics.element = ID("phys");
             Physics.init();
 
-            var ball = new Physics.shape("box",{height: 2, gravity: false, width: 2, character: "*", x: 5, y: 5});
-            var l_paddle = new Physics.shape("box",{height: 10, gravity: false, width: 2, enableRight: false, enableLeft: false, character: "|", x: 2, y:0});
-            var r_paddle = new Physics.shape("box",{height: 10, gravity: false, width: 2, enableRight: false, enableLeft: false, character: "|", x: Physics.width-3, y:0});
+            var ball = new Physics.shape("rect",{height: 2, gravity: false, width: 2, character: "o", x: 5, y: 5});
+            var l_paddle = new Physics.shape("rect",{height: 10, gravity: false, width: 2, enableRight: false, enableLeft: false, character: "|", x: 2, y:0});
+            var r_paddle = new Physics.shape("rect",{height: 10, gravity: false, width: 2, enableRight: false, enableLeft: false, character: "|", x: Physics.width-4, y:0});
 
             var ballSpeed = 0.5;
             var xdir = ballSpeed; //Set up direction vars for ball
@@ -46,10 +46,11 @@
                     ydir = ballSpeed;
                 }
 
-                r_paddle.moveTowardsObject(ball,0.7); //set right paddle to be controlled by computer, moving towards ball at a speed of 0.7 chars a frame
+                r_paddle.moveTowardsObject(ball,10/loop.options.fps); //set right paddle to be controlled by computer, moving towards ball at a speed of 0.7 chars a frame
+                l_paddle.moveTowardsObject(ball,40/loop.options.fps);
 
                 if (ball.x == 0 && (ball.collisionRight == false && ball.collisionLeft == false && ball.collisionBottom == false)) {
-                    console.log("BNS")
+                    //console.log("BNS")
                     alert("Computer Won");
                     ball.x = Physics.width/2;
                     ball.y = Physics.height/2;
@@ -59,7 +60,8 @@
                 }
                 if (ball.x<= 1 || ball.x >= Physics.width-2) {
                     var inc = Math.abs(((l_paddle.y-lpaddleoldy)/2));
-                    if (inc > 3) {
+                    console.log("inc "+inc)
+                    if (inc > 1) {
                         ballSpeed+=inc;
                     } else {
                         ballSpeed-=0.2;
@@ -71,9 +73,9 @@
                     }
                 }
 
-                if (ball.x == Physics.width && (ball.collisionRight == false && ball.collisionLeft == false && ball.collisionBottom == false)) {
-                    console.log("BNS")
-                    alert("Player Won");
+                if (ball.x >= Physics.width-1 && (r_paddle.collisionRight == false && r_paddle.collisionLeft == false && r_paddle.collisionBottom == false)) {
+                    console.log("BNSP")
+                    //alert("Player Won");
                     ball.x = Physics.width/2;
                     ball.y = Physics.height/2;
                     ballSpeed = 0.5;
@@ -87,8 +89,8 @@
 
             }},ball,l_paddle,r_paddle);
 
-            l_paddle.controlMouse(); //set left paddle to be controlled by player
-
+            l_paddle.controlMouse(); //set left paddle to be controlled by player using mouse
+            //l_paddle.controlRaw(10); //set left paddle to be controlled by player using arrow keys
             loop.start();
         </script>
     </body>

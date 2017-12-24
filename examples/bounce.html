@@ -22,7 +22,7 @@
             var xdir = 1; //Set up direction vars
             var ydir = 1;
 
-            var box = new Physics.shape("box",{height: 1, gravity: false, width: 1, replaceWithSpace: true, color: "red", character: "◘", x: Math.floor(Math.random() * Physics.width), y: Math.floor(Math.random() * Physics.height)}); //Create box shape with random placement
+            var box = new Physics.shape("rect",{height: 1, gravity: false, width: 1, replaceWithSpace: true, color: "red", character: "◘", x: Math.floor(Math.random() * Physics.width), y: Math.floor(Math.random() * Physics.height)}); //Create box shape with random placement
 
             var loop = new Physics.renderLoop({fps: 60, collision: false, clear: false, onFrame: function() { //Set up loop with onFrame function
                 stats.begin();

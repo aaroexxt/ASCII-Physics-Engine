@@ -4,7 +4,6 @@
 */
 
 /*
- * @license
  * Copyright (c) 2018 Aaron Becker
  *
  * This software is provided 'as-is', without any express or implied
@@ -37,7 +36,7 @@ var Physics = { //Class to represent all main functions of physics engine
     defaultSpaceChar: " ",
     defaultShapeChar: "*",
     defaultNewlineChar: "<br>",
-    startString: "PHYV5:<br><br>",
+    startString: "PHYV6:<br><br>",
     //CONSTANTS
     gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.05), //gravitational constant
     frictionConstant: new notLoadedVector("frictionConstant",1,0), //frictional constant
@@ -46,7 +45,7 @@ var Physics = { //Class to represent all main functions of physics engine
     ticksPerSecond: 60, //limit number of physics calls per second
     updatesPerSecond: 40, //limit number of gravity updates per second
     renderPerSecond: 50, //limit renders performed per second
-    renderInColor: false, //very beta
+    renderInColor: false, //very beta (doesn't really work yet)
     //TIMING VARIABLES
     now: Date.now(),
     nextTick: Date.now(),
@@ -70,6 +69,8 @@ var Physics = { //Class to represent all main functions of physics engine
     initialLineHeight: 0.83,
     collisionAccuracy: 0.5, //maximum difference for narrow collision between pixels
     ignoreMeshSize: false, //DO NOT ENABLE UNLESS YOU ARE TESTING (disables error checking for rendering shapes that are too large or small)
+    stopRenderFunctionOnError: false, //stop running onFrame function of renderLoop on error
+    trimMeshOnShapeCreation: true, //trim shape mesh on creation to save space
     //MISC
     collisionEfficiency: -1,
     inefficientArr: [],
@@ -77,10 +78,9 @@ var Physics = { //Class to represent all main functions of physics engine
     renderBuffer: [],
     renderString: [],
     charsPerFrame: 0,
-    //RENDER LOOP STUFF
+    //RENDER LOOP VARIABLES
     renderLoopPasts: [],
     renderLoopNext: 0,
-    renderLoopShapes: [],
     //MAIN FUNCTIONS
     /**
     * Constructor for 2d shape
@@ -102,8 +102,6 @@ var Physics = { //Class to represent all main functions of physics engine
             if (typeof this.replaceWithSpace == "undefined") {
                 this.replaceWithSpace = false;
             }
-            this.shapeArrayNum = Physics.renderLoopShapes.length;
-            Physics.renderLoopShapes[Physics.renderLoopShapes.length] = this;
             this.color = options.color || "black";
             if (typeof this.color === "undefined") {
                 this.color = "black";
@@ -324,6 +322,11 @@ var Physics = { //Class to represent all main functions of physics engine
             } else {
                 console.error("[SHAPE_CONSTRUCT] Shape "+this.type+" not found. There may be errors rendering.");
             }
+            if (Physics.trimMeshOnShapeCreation) {
+                this.mesh = Physics.util.trimMesh(this.mesh);
+                this.regenColorMesh(); //regen color mesh
+                this.calculate(); //regen pointTable
+            }
             this.pointTable.uniqueify(); //remove calls for multiple points
             this.update(); //update to start gravity and set updated point table
             this.recalculateWeight(); //calculate weight
@@ -351,8 +354,6 @@ var Physics = { //Class to represent all main functions of physics engine
         if (typeof this.replaceWithSpace == "undefined") {
             this.replaceWithSpace = false;
         }
-        this.shapeArrayNum = Physics.renderLoopShapes.length;
-        Physics.renderLoopShapes[Physics.renderLoopShapes.length] = this;
         this.color = options.color || "black";
         if (typeof this.color === "undefined") {
             this.color = "black";
@@ -617,6 +618,11 @@ var Physics = { //Class to represent all main functions of physics engine
             this.colorMesh = [""];
         }
         this.updateCoords(); //update coords
+        if (Physics.trimMeshOnShapeCreation) {
+            this.mesh = Physics.util.trimMesh(this.mesh); //trim mesh to save space
+            this.regenColorMesh(); //regen color mesh
+            this.calculate(); //regen pointTable
+        }
         this.pointTable.uniqueify(); //remove calls for multiple points
         this.update(); //update to start gravity and set updated point table
         this.recalculateWeight(); //calculate weight
@@ -679,9 +685,43 @@ var Physics = { //Class to represent all main functions of physics engine
                     "8" : {mesh:["   ____ ","  ( __ )"," / __  |","/ /_/ / ","\\____/  "], x: 0, y:0}, //8
                     "9" : {mesh:["   ____ ","  / __ \\"," / /_/ /"," \\__, / ","/____/  "], x: 0, y:0}, //9
                     " " : {mesh:["  ","  ","  ","  ","  "], x: 0, y:0, overrideSpacesInCustomShape: true}, //space
-                    "l" : {mesh:["    __                   __","   / /   ___ _   _____  / /","  / /   / _ \\ | / / _ \\/ / "," / /___/  __/ |/ /  __/ /  ","/_____/\\___/|___/\\___/_/   "], x: 0, y:0} //level
+                    "a" : {mesh:["  ____ _", " / __ \`/", "/ /_/ / ", "\\__,_/  ", "        "], x:0, y:0}, //a
+                    "b" : {mesh:["   / /_ ", "  / __ \\", " / /_/ /", "/_.___/ ", "        "], x:0, y:0}, //b
+                    "c" : {mesh:["  _____", " / ___/", "/ /__  ", "\\___/  ", "       "], x:0, y:0}, //c
+                    "d" : {mesh:["  ____/ /", " / __  / ", "/ /_/ /  ", "\\__,_/   ", "         "], x:0, y:0}, //d
+                    "e" : {mesh:["  ___ ", " / _ \\", "/  __/", "\\___/ ", "      "], x:0, y:0}, //e
+                    "f" : {mesh:["   / __/", "  / /_  ", " / __/  ", "/_/     ", "        "], x:0, y:0}, //f
+                    "g" : {mesh:["   ____ _", "  / __ \`/", " / /_/ / ", " \\__, /  ", "/____/   "], x:0, y:0}, //g
+                    "h" : {mesh:["   / /_ ", "  / __ \\", " / / / /", "/_/ /_/ ", "        "], x:0, y:0}, //h
+                    "i" : {mesh:["   (_)", "  / / ", " / /  ", "/_/   ", "      "], x:0, y:0}, //i
+                    "j" : {mesh:["      (_)", "     / / ", "    / /  ", " __/ /   ", "/___/    "], x:0, y:0}, //j
+                    "k" : {mesh:["   / /__", "  / //_/", " / ,<   ", "/_/|_|  ", "        "], x:0, y:0}, //k
+                    "l" : {mesh:["   / /", "  / / ", " / /  ", "/_/   ", "      "], x:0, y:0}, //l
+                    "m" : {mesh:["   ____ ___ ", "  / __ \`__ \\", " / / / / / /", "/_/ /_/ /_/ ", "            "], x:0, y:0}, //m
+                    "n" : {mesh:["   ____ ", "  / __ \\", " / / / /", "/_/ /_/ ", "        "], x:0, y:0}, //n
+                    "o" : {mesh:["  ____ ", " / __ \\", "/ /_/ /", "\\____/ ", "       "], x:0, y:0}, //o
+                    "p" : {mesh:["    ____ ", "   / __ \\", "  / /_/ /", " / .___/ ", "/_/      "], x:0, y:0}, //p
+                    "q" : {mesh:["  ____ _", " / __ \`/", "/ /_/ / ", "\\__, /  ", "  /_/   "], x:0, y:0}, //q
+                    "r" : {mesh:["   _____", "  / ___/", " / /    ", "/_/     ", "        "], x:0, y:0}, //r
+                    "s" : {mesh:["   _____", "  / ___/", " (__  ) ", "/____/  ", "        "], x:0, y:0}, //s
+                    "t" : {mesh:["  / /_", " / __/", "/ /_  ", "\\__/  ", "      "], x:0, y:0}, //t
+                    "u" : {mesh:["  __  __", " / / / /", "/ /_/ / ", "\\__,_/  ", "        "], x:0, y:0}, //u
+                    "v" : {mesh:[" _   __", "| | / /", "| |/ / ", "|___/  ", "       "], x:0, y:0}, //v
+                    "w" : {mesh:[" _      __", "| | /| / /", "| |/ |/ / ", "|__/|__/  ", "          "], x:0, y:0}, //w
+                    "x" : {mesh:["   _  __", "  | |/_/", " _>  <  ", "/_/|_|  ", "        "], x:0, y:0}, //x
+                    "y" : {mesh:["   __  __", "  / / / /", " / /_/ / ", " \\__, /  ", "/____/   "], x:0, y:0}, //y
+                    "-" : {mesh:["       "," ______","/_____/","       ","       "], x:0, y:0}, //-
+                    "_" : {mesh:["       ","       ","       "," ______","/_____/"], x:0, y:0}, //_
+                    "+" : {mesh:["    __ "," __/ /_","/_  __/"," /_/   ","       "], x:0, y:0}, //+
+                    "*" : {mesh:["  __/|_"," |    /","/_ __| "," |/    ","       "], x:0, y:0}, //*
+                    "/" : {mesh:["     _/_/","   _/_/  "," _/_/    ","/_/      ","         "], x:0, y:0}, ///
+                    "." : {mesh:["   ","   "," _ ","(_)","   "], x:0, y:0}, //.
+                    "lvl" : {mesh:["    __                   __","   / /   ___ _   _____  / /","  / /   / _ \\ | / / _ \\/ / "," / /___/  __/ |/ /  __/ /  ","/_____/\\___/|___/\\___/_/   "], x: 0, y:0} //level
                 }
             },
+            /* Script to make fonts in mesh format from website patorjk.com/software/taag
+            if (typeof font === "undefined") {var font = []; } font.push(JSON.stringify(document.getElementById("taag_output_text").innerHTML.replace(/\\/g, "\\\\").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/`/g, "\\`").replace(/\"/g, "\\\"").replace(/\'/g, "\\\'").split("\n").slice(1)))
+            */
             extranums: [],
             init: function() {
                 var keys = Object.keys(Physics.util.asciitext.fonts);
@@ -689,7 +729,9 @@ var Physics = { //Class to represent all main functions of physics engine
                     var keysfont = Object.keys(Physics.util.asciitext.fonts[keys[i]]);
                     for (var j=0; j<keysfont.length; j++) { //for every number from font in list
                         var item = Physics.util.asciitext.fonts[keys[i]][keysfont[j]];
-                        //console.log(JSON.stringify(item))
+                        if (Physics.debugMode) {
+                            console.log("[ASCII_TXT_INIT] character in: "+JSON.stringify(item));
+                        }
                         var newitem = new Physics.shape("custom",{mesh: item.mesh, x: item.x, y: item.y, color: ((typeof item.color === "undefined") ? "black" : item.color), overrideRenderLimit: true, overrideSpacesInCustomShape: ((typeof item.overrideSpacesInCustomShape === "undefined") ? false : item.overrideSpacesInCustomShape)}); //make a new shape with options from font
                         //delete Physics.util.asciitext.fonts[keys[i]][keysfont[j]];
                         Physics.util.asciitext.fonts[keys[i]][keysfont[j]] = newitem;
@@ -708,17 +750,22 @@ var Physics = { //Class to represent all main functions of physics engine
                 var finalarr = [];
                 for (var i=0; i<String(lnum).length; i++) {
                     if (font[String(lnum)[i]] instanceof Physics.shape) {
-                        if (!usednums.contains(String(lnum)[i])) { //check if number has already been used
-                            font[String(lnum)[i]].x = xpos;
-                            xpos+=font[String(lnum)[i]].width;
-                            finalarr.push(font[String(lnum)[i]]);
-                            usednums[usednums.length] = String(lnum)[i];
-                        } else { //number already used deep clone and add to array because xpos and ypos has to be different
-                            Physics.util.asciitext.extranums[Physics.util.asciitext.extranums.length] = JSON.parse(JSON.stringify(font[String(lnum)[i]]));
-                            Physics.util.asciitext.extranums[Physics.util.asciitext.extranums.length-1].UUID = generateUUID();
-                            Physics.util.asciitext.extranums[Physics.util.asciitext.extranums.length-1].x = xpos;
-                            xpos+=font[String(lnum)[i]].width;
-                            finalarr.push(Physics.util.asciitext.extranums[(Physics.util.asciitext.extranums.length-1)]);
+                        if (xpos+font[String(lnum)[i]].width > Physics.width) {
+                            console.error("[GEN_ASCII_TXT] Attempt at placing character wider than screen width, all characters after character '"+String(lnum)[i-1]+"' will not be rendered");
+                            break;
+                        } else {
+                            if (!usednums.contains(String(lnum)[i])) { //check if number has already been used
+                                font[String(lnum)[i]].x = xpos;
+                                xpos+=font[String(lnum)[i]].width;
+                                finalarr.push(font[String(lnum)[i]]);
+                                usednums[usednums.length] = String(lnum)[i];
+                            } else { //number already used deep clone and add to array because xpos and ypos has to be different
+                                Physics.util.asciitext.extranums[Physics.util.asciitext.extranums.length] = JSON.parse(JSON.stringify(font[String(lnum)[i]]));
+                                Physics.util.asciitext.extranums[Physics.util.asciitext.extranums.length-1].UUID = generateUUID();
+                                Physics.util.asciitext.extranums[Physics.util.asciitext.extranums.length-1].x = xpos;
+                                xpos+=font[String(lnum)[i]].width;
+                                finalarr.push(Physics.util.asciitext.extranums[(Physics.util.asciitext.extranums.length-1)]);
+                            }
                         }
                     } else {
                         console.error("[GEN_ASCII_TXT] Font character that has been selected is not initialized or doesn't exist in font. Character='"+String(lnum)[i]+"'");
@@ -731,8 +778,55 @@ var Physics = { //Class to represent all main functions of physics engine
         * Onscreen vector angle display
         * @constructor
         */
-        angleDisplay: function(shape, vec) { //angle display function (not finished)
-
+        angleDisplay: function(shape, vec, normalize, normmult) { //angle display function (not finished)
+            if (typeof normalize == "undefined") {
+                normalize = false;
+            }
+            if (typeof normmult == "undefined") {
+                normmult = 1;
+            }
+            this.centerPoint = shape.centerPoint || [Physics.width/2,Physics.height/2];
+            this.shape = shape;
+            this.vector = vec;
+            this.line = [];
+            this.mesh = [""];
+            this.UUID = generateUUID();
+            this.color = "blue";
+            this.multiplier = 1;
+            this.normalize = normalize;
+            this.normmult = normmult;
+            this.gravity = false;
+            this.onlyWriteNonemptyPixels = true;
+            this.colorMesh = ["VecNotCompatible"]; //noncompatible with color for now
+            this.mx = Math.round(this.centerPoint[0]);
+            this.my = Math.round(this.centerPoint[1]);
+            this.regenColorMesh = this.shape.regenColorMesh;
+            this.x = 0;
+            this.y = 0;
+            this.update = function() {
+                this.centerPoint = this.shape.centerPoint || [Physics.width/2,Physics.height/2];
+                this.mx = Math.round(this.centerPoint[0]);
+                this.my = Math.round(this.centerPoint[1]);
+                var vec = JSON.parse(JSON.stringify(this.vector));
+                vec.normalize = this.vector.normalize;
+                vec.length = this.vector.length;
+                vec.divide = this.vector.divide;
+                vec.angle = this.vector.angle;
+                if (normalize) {
+                    vec = vec.normalize(this.normmult);
+                }
+                var ang = Math.round(vec.angle());
+                var text = Physics.util.asciitext.generateText(String(ang));
+                var combine = Physics.util.combineMeshes(text); //combine meshes from array of asciitext generation
+                this.mesh = combine.mesh;
+                var shape = new Physics.shape("custom",{mesh: combine.mesh, x:0, y:0})
+                this.width = shape.width;
+                this.height = shape.height;
+                if (Physics.updateColorMeshOnVectorChange) {
+                    this.regenColorMesh(this.color);
+                }
+            }
+            this.update();
         },
         /**
         * Onscreen vector display
@@ -760,8 +854,7 @@ var Physics = { //Class to represent all main functions of physics engine
             this.colorMesh = ["VecNotCompatible"]; //noncompatible with color for now
             this.mx = Math.round(this.centerPoint[0]);
             this.my = Math.round(this.centerPoint[1]);
-            this.shapeArrayNum = Physics.renderLoopShapes.length;
-            Physics.renderLoopShapes[Physics.renderLoopShapes.length] = this;
+            this.regenColorMesh = this.shape.regenColorMesh;
             this.x = 0;
             this.y = 0;
             this.update = function() {
@@ -1031,6 +1124,104 @@ var Physics = { //Class to represent all main functions of physics engine
             }
             return coords;
         },
+        combineMeshes: function() { //combine multiple shapes into mesh
+            var buf = [];
+            for (var j=0; j<Physics.height; j++) { //generate blank screen
+                buf[j] = "";
+                for (var i=0; i<Physics.width; i++) {
+                    buf[j] += Physics.defaultSpaceChar;
+                }
+            }
+            //possibly array of objects to render, check to be sure
+            var bad = false;
+            var arrlist = [];
+            var args = []; //make a seperate array to change so strict mode checks don't fail
+            for (var i=0; i<arguments.length; i++) {
+                if (arguments[i] != true && arguments[i] != false) {
+                    if (typeof arguments[i] === "object" && typeof arguments[i].UUID === "undefined" && arguments[i].length > 0 && arguments[i].constructor === Array) { //check if it is a shape object
+                        var badshape = false;
+                        for (var j=0; j<arguments[i].length; j++) { //check if all items in list are valid to render
+                            if (typeof arguments[i][j] === "object" && typeof arguments[i][j].UUID !== "undefined") {
+                                arrlist.push(arguments[i][j]);
+                            } else {
+                                badshape = true;
+                                console.error("[RENDER_PRE] Bad shape detected in array passed");
+                            }
+                        }
+                    } else {
+                        bad = true;
+                        if (Physics.debugMode) {
+                            console.log("[RENDER_PRE] Discovered argument that is not array in render");
+                        }
+                    }
+                }
+            }
+            if (bad == false && badshape == false) {
+                args = [];
+                for(var i=0; i<arrlist.length; i++) {
+                    if (Physics.debugMode) {
+                        console.log("[RENDER_PRE] Changing arguments passed into render because of array, i="+i);
+                    }
+                    args.push(arrlist[i]);
+                }
+            } else {
+                for (var i=0; i<arguments.length; i++) {
+                    args.push(arguments[i]);
+                }
+            }
+            for (var i=0; i<args.length; i++) {
+                var mesh = args[i].mesh;
+                for (var j=0; j<mesh.length; j++) { //for every line of mesh
+                    for (var b=0; b<mesh[j].length; b++) { //for every character in mesh
+                        var x = constrain(args[i].x,0,(Physics.width-args[i].width)); //constrain x
+                        var y = constrain(args[i].y,0,(Physics.height-args[i].height)); //constrain y
+                        args[i].x = x; //fix bug where y position keeps changing
+                        args[i].y = y;
+                        x = Math.round(x);
+                        y = Math.round(y);
+                        if (args[i].onlyWriteNonemptyPixels) { //don't replace screen pixel if source pixel is air
+                            if (args[i].mesh[j][b] != " ") { //if it's air just skip else replace
+                                buf[j+y] = buf[j+y].replaceAt(b+x,args[i].mesh[j][b]);
+                            }
+                        } else { //no special options just replace everything no matter whether it's space or not
+                            buf[j+y] = buf[j+y].replaceAt(b+x,args[i].mesh[j][b]);
+                        }
+                    }
+                }
+            }
+            buf = Physics.util.trimMesh(buf); //trim unneccesary characters to save space
+            var shape = new Physics.shape("custom", {x:0, y:0, mesh: buf});
+            //loop.stop();
+            return shape;
+        },
+        trimMesh: function(mesh) {
+            //3 steps: find the max x for each row, if the max x is none then delete the row (only delete if row is not needed to maintain shape integrity)
+            var maxX = [];
+            for (var i=0; i<mesh.length; i++) { //find maxx for each row
+                maxX[i] = -1;
+                for (var j=0; j<mesh[i].length; j++) {
+                    if (mesh[i][j] != " ") {
+                        maxX[i] = j+1;
+                    }
+                }
+            }
+            //console.log(JSON.stringify(maxX))
+            var allowdel = true; //allow deletion of rows
+            for (var i=mesh.length-1; i>=0; i--) {
+                if (maxX[i] == -1 && allowdel) { //still haven't hit first column with char, go ahead and trim
+                    //console.log("slicing mesh "+i);
+                    mesh.splice(i,1); //slice the mesh and remove the row
+                } else if (maxX[i] == -1 && allowdel == false) { //just set to blank to preserve row but remove rendering load
+                    //console.log("sliceindel "+i)
+                    mesh[i] = "";
+                } else {
+                    //console.log("stringing mesh "+i)
+                    mesh[i] = mesh[i].substring(0,maxX[i]);
+                    allowdel = false;
+                }
+            }
+            return mesh;
+        },
         coords2mesh: function(coords,character,map) { //convert array of coords to mesh
             if (coords.length == 0) {
                 return console.error("[COORDS2MESH] Coordinates array length is 0");
@@ -1222,15 +1413,15 @@ var Physics = { //Class to represent all main functions of physics engine
         for (var i=0; i<args.length; i++) { //add meshes to screen
             if (args[i] != true && args[i] != false && typeof args[i] !== "undefined") {
                 //alert(JSON.stringify(args[i]))
-                try {
+                //try {
                     if ((args[i].gravity == true || Physics.allGravity) && (nextUpdateReached || true)) { //calculate gravity
                         if (Physics.debugMode) {console.log("[RENDER_MAIN] Updating velocity for shape: "+args[i].type+", UUID: "+args[i].UUID+" (velX: "+args[i].velocity.x+", velY: "+args[i].velocity.y+")")}
                             args[i].update(false);
                     }
-                } catch(e) {
-                    console.error("[RENDER_MAIN] Error updating gravity for shape. Shape: "+args[i]+", e: "+e);
+                /*} catch(e) {
+                    console.error("[RENDER_MAIN] Error updating gravity for shape. Shape: "+JSON.stringify(args[i])+", e: "+e);
                     //console.log(JSON.stringify(args))
-                }
+                }*/
                 if (args[i].UUID === undefined) { //sanity check!!
                     if (!(i == 0 && (args[i] == true || args[i] == false))) {
                         console.error("[RENDER_MAIN] Error drawing: argument "+i+" does not exist or doesn't have a UUID");
@@ -1292,7 +1483,7 @@ var Physics = { //Class to represent all main functions of physics engine
                                         for (var b=0; b<mesh[j].length; b++) { //for every character in mesh
                                             try {
                                                 //console.log(Physics.renderBuffer[j+y][b+x])
-                                                if (args[i].replaceWithSpace && Physics.renderBuffer[j+y][b+x] != " ") { //OPTION TO REPLACE AIR SPACE OR NOT
+                                                if (args[i].replaceWithSpace && Physics.renderBuffer[j+y][b+x] != " ") { //invert pixel if it's over another
                                                     Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].replaceAt(b+x," ");
                                                 } else {
                                                     if (args[i].onlyWriteNonemptyPixels) { //don't replace screen pixel if source pixel is air
@@ -1609,9 +1800,15 @@ var Physics = { //Class to represent all main functions of physics engine
             }
             notLoadedVectors = [];
             Physics.util.asciitext.init(); //initialize asciitext
-            console.typeable("debugon","console.log(\"[INIT] Type debugon into the console to enable debug mode. (Warning: there is about 1000 debug messages outputted per second)\");","console.log(\"Debug mode active.\"); Physics.debugMode = true;");
-            console.typeable("debugoff","console.log(\"[INIT] Type debugoff into the console to disable debug mode.\");","console.log(\"Debug mode disabled.\"); Physics.debugMode = false;");
-            console.typeable("debug2s","console.log('[INIT] Type debug2s into the console to perform auto-test of code for 2s and then stop it. (Mostly for debugging broken things in render loop)');","console.clear(); debugon; setTimeout(function(){debugoff;},2000);");
+            console.typeable("debugon",
+                function(){console.log("[INIT] Type debugon into the console to enable debug mode. (Warning: there is about 1000 debug messages outputted per second)");},
+                function(){console.log("Debug mode active."); Physics.debugMode = true;});
+            console.typeable("debugoff",
+                function(){console.log("[INIT] Type debugoff into the console to disable debug mode.");},
+                function(){console.log("Debug mode disabled."); Physics.debugMode = false;});
+            console.typeable("debug2s",
+                function(){console.log("[INIT] Type debug2s into the console to perform auto-test of code for 2s and then stop it. (Mostly for debugging broken things in render loop)");},
+                function(){console.clear(); debugon; setTimeout(function(){debugoff;},2000);});
             //console.typeable("stop","console.log('Type stop into the console to stop the game.');","fpsInterval = 0;")
 
         Physics.element.style.lineHeight = String(Physics.lineHeight);
@@ -1665,7 +1862,7 @@ var Physics = { //Class to represent all main functions of physics engine
                     var shapesarr = [];
                     for (var i=1; i<args.length; i++) {
                         try{if (Physics.debugMode) {console.log("[CREATERENDERLOOP] Args into renderloop i: "+i+", arg: "+JSON.stringify(args[i]));}}catch(e){}
-                        shapesarr.push(Physics.renderLoopShapes[args[i].shapeArrayNum]);
+                        shapesarr.push(args[i]);
                     }
                     if (_this.firstRun) {
                         if (Physics.debugMode){console.log("[RENDERLOOP_CREATE] firstrun renderloopauto: "+JSON.stringify(shapesarr));}
@@ -1687,8 +1884,19 @@ var Physics = { //Class to represent all main functions of physics engine
                         try {
                             _this.options.onFrame(_this);
                         } catch(e) {
-                            _this.options.executeOnFrame = false;
                             console.error("[RENDERLOOP_LOOP] Error executing onFrame function for renderLoop. E: '"+e+"'");
+                            if (Physics.stopRenderFunctionOnError) {
+                                _this.options.executeOnFrame = false;
+                                var randstr = "";
+                                var alpha="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
+                                randstr+=alpha[Math.floor(Math.random() * alpha.length-6)]; //can't have digit as first letter of code
+                                for (var i=0; i<4; i++) {
+                                    randstr+=alpha[Math.floor(Math.random() * alpha.length)];
+                                } //TODO REMOVE EVAL FROM CONSOLE.TYPEABLE
+                                console.typeable(randstr, function(){console.log("To start onFrame function again, type \'"+randstr+"\'.");}, {function: function(_this){console.log("Restarting onFrame loop."); _this.options.executeOnFrame=true;}, arguments: [_this]})
+                            } else {
+                                console.warn("[RENDERLOOP_LOOP] RenderLoop onFrame function has thrown an error, however flag is set so loop will not stop");
+                            }
                         }
                     }
                 }
@@ -1760,7 +1968,7 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function(ren
                 } else {
                     this.velocity.y -= 0.5;
                 }*/
-                this.velcocity.y = -0.25; //new system
+                this.velocity.y = -0.25; //new system
             } else {
                 if (this.velocity.y <= Physics.terminalVelocity && this.velocity.y >= -Physics.terminalVelocity) {
                     this.velocity.y += this.weight; //add vectors
@@ -1849,10 +2057,11 @@ Physics.shape.prototype.recalculateWeight = Physics.shape3d.prototype.recalculat
     if (Physics.debugMode) {
         console.log("[PHYSICS_RECALCWEIGHT] Recalculate Chars for shape, chars= "+chars+", UUID= "+this.UUID)
     }
-    this.characters = Math.sqrt(chars);
-    this.mass = this.characters*Physics.weightPerCharacter;
+    this.characters = chars; //square root characters
+    this.sqrtcharacters = Math.sqrt(chars);
+    this.mass = this.sqrtcharacters*Physics.weightPerCharacter;
     this.weight = Physics.gravitationalConstant.y*this.mass; //calculate weight by g*m
-    this.friction = Physics.frictionConstant.x*this.weight; //calculate friction
+    this.friction = Physics.frictionConstant.x*this.weight; //calculate friction by f*w
 }
 
 Physics.shape.prototype.moveTowardsObject = Physics.shape3d.prototype.moveTowardsObject = function(object,maxspeed) {
@@ -1923,6 +2132,9 @@ Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlRaw = 
 var playraw = [];
 var mapraw = {};
 Physics.shape.prototype.controlRaw = Physics.shape3d.prototype.controlRaw = function(multiplier) {
+    if (typeof multiplier === "undefined") {
+        multiplier = 1;
+    }
     playraw = this;
     window.onkeydown = window.onkeyup = function(e) {
         var e = window.event ? window.event : e;
@@ -2021,21 +2233,4 @@ function handleMouseMove(event) {
         x: newx,
         y: newy
     }
-}
-
-function generateUUID(){
-    var d = new Date().getTime();
-    if(window.performance && typeof window.performance.now === "function"){
-        d += performance.now(); //use high-precision timer if available
-    }
-    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = (d + Math.random()*16)%16 | 0;
-        d = Math.floor(d/16);
-        return (c=='x' ? r : (r&0x3|0x8)).toString(16);
-    });
-    return uuid;
-}
-
-function constrain(number, min, max) {
-    return number > max ? max : number < min ? min : number;
 }

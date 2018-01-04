@@ -719,7 +719,7 @@ var Physics = { //Class to represent all main functions of physics engine
                     "lvl" : {mesh:["    __                   __","   / /   ___ _   _____  / /","  / /   / _ \\ | / / _ \\/ / "," / /___/  __/ |/ /  __/ /  ","/_____/\\___/|___/\\___/_/   "], x: 0, y:0} //level
                 }
             },
-            /* Script to make fonts in mesh format from website patorjk.com/software/taag
+            /* Script to make fonts in mesh format from website 'http://patorjk.com/software/taag'
             if (typeof font === "undefined") {var font = []; } font.push(JSON.stringify(document.getElementById("taag_output_text").innerHTML.replace(/\\/g, "\\\\").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/`/g, "\\`").replace(/\"/g, "\\\"").replace(/\'/g, "\\\'").split("\n").slice(1)))
             */
             extranums: [],
@@ -778,7 +778,7 @@ var Physics = { //Class to represent all main functions of physics engine
         * Onscreen vector angle display
         * @constructor
         */
-        angleDisplay: function(shape, vec, normalize, normmult) { //angle display function (not finished)
+        angleDisplay: function(shape, vec, normalize, normmult) { //angle display function
             if (typeof normalize == "undefined") {
                 normalize = false;
             }
@@ -822,6 +822,8 @@ var Physics = { //Class to represent all main functions of physics engine
                 var shape = new Physics.shape("custom",{mesh: combine.mesh, x:0, y:0})
                 this.width = shape.width;
                 this.height = shape.height;
+                //ADD TEXT ABOVE SHAPE BY USING SHAPE X AND Y
+                //this.x = 
                 if (Physics.updateColorMeshOnVectorChange) {
                     this.regenColorMesh(this.color);
                 }
@@ -1145,13 +1147,13 @@ var Physics = { //Class to represent all main functions of physics engine
                                 arrlist.push(arguments[i][j]);
                             } else {
                                 badshape = true;
-                                console.error("[RENDER_PRE] Bad shape detected in array passed");
+                                console.error("[COMBINE_MESH_PRE] Bad shape detected in array passed");
                             }
                         }
                     } else {
                         bad = true;
                         if (Physics.debugMode) {
-                            console.log("[RENDER_PRE] Discovered argument that is not array in render");
+                            console.log("[COMBINE_MESH_PRE] Discovered argument that is not array in combine mesh");
                         }
                     }
                 }
@@ -1160,7 +1162,7 @@ var Physics = { //Class to represent all main functions of physics engine
                 args = [];
                 for(var i=0; i<arrlist.length; i++) {
                     if (Physics.debugMode) {
-                        console.log("[RENDER_PRE] Changing arguments passed into render because of array, i="+i);
+                        console.log("[COMBINE_MESH_PRE] Changing arguments passed into render because of array, i="+i);
                     }
                     args.push(arrlist[i]);
                 }
@@ -1314,7 +1316,7 @@ var Physics = { //Class to represent all main functions of physics engine
                 mesh[mappedcoords[i][1]-1] = mesh[mappedcoords[i][1]-1].replaceAt(mappedcoords[i][0]-1,character); //subtract 1 because arrays start at index 0
             }
             //return {mesh: mesh};
-
+            mesh = Physics.util.trimMesh(mesh);
             return new Physics.shape("custom", {mesh: mesh, x: xmin, y: ymin}); //return the shape
         }
         /*dramatic music plays* I leave this here as a tribute to when this didn't work. Whoever finds this is awesome! (this code renders coords directly to screen)

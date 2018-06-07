@@ -43,6 +43,21 @@
             cube.controlRaw(2);
             loop.start();
             //setTimeout(function(){loop.stop()},5000);
+
+
+            /*RIP
+            var canvas = document.createElement("canvas");
+            canvas.zIndex = 10000;
+            canvas.setAttribute("width", window.innerWidth);
+            canvas.setAttribute("height", window.innerHeight);
+            canvas.setAttribute("style", "position: absolute; x:0; y:0;");
+            document.body.appendChild(canvas);
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (var i=0; i<box.coords.length; i++) {
+                ctx.fillRect(box.coords[i][0],box.coords[i][1],1,1);
+            }
+            */
         </script>
     </body>
 </html>

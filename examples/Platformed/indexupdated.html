@@ -2,10 +2,10 @@
 <html>
     <head>
         <title>Physics!</title>
-        <script src="physics.js"></script>
+        <script src="../../dist/unminified/physics.js"></script>
         <script src="audio.js"></script>
-        <script src="helpLib.js"></script>
-        <script src="stats.js"></script>
+        <script src="../../dist/unminified/helpLib.js"></script>
+        <script src="../../dist/unminified/stats.js"></script>
         <meta charset="utf-8">
         <style>
             pre span .red: {
@@ -90,7 +90,6 @@
         <pre id="phys"></pre>
     </body>
     <script>
-        MAXIMIZEFPS = true;
         Physics.element = ID("phys");
         Physics.init();
         Physics.element.style.lineHeight = String(Physics.initialLineHeight);
@@ -118,8 +117,8 @@
                 gameAudio.pause();
             },1000);
         }
-        var player = new Physics.shape("box",{height: 8, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y:0});
-        var titleplayer = new Physics.shape("box",{height: 6, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y: 0});
+        var player = new Physics.shape("rect",{height: 8, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y:0});
+        var titleplayer = new Physics.shape("rect",{height: 6, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y: 0});
         var enablePlayerEditor = false;
 
         var oldEPE = false;
@@ -187,11 +186,11 @@
         title.levelmaker.y = title.leftpoint.y+(title.leftpoint.height/2)-1;
 
 
-        title.startbox = new Physics.shape("box",{height: title.start.height+3, width: title.start.width+3, filled: false, character: "*", x: title.start.x-1, y: title.start.y-1}); //set up boxes around text; has to come later because start isn't initalized yet and render order matters
-        title.optsbox = new Physics.shape("box",{height: title.opts.height+3, width: title.opts.width+3, filled: false, character: "*", x: title.opts.x-1, y: title.opts.y-1});
-        title.startline = new Physics.shape("box",{height: 2, width: title.startbox.x-(title.optsbox.x+title.optsbox.width)-10, character: "_", x: title.optsbox.x+title.optsbox.width+5, y: title.start.y+2});
+        title.startbox = new Physics.shape("rect",{height: title.start.height+3, width: title.start.width+3, filled: false, character: "*", x: title.start.x-1, y: title.start.y-1}); //set up boxes around text; has to come later because start isn't initalized yet and render order matters
+        title.optsbox = new Physics.shape("rect",{height: title.opts.height+3, width: title.opts.width+3, filled: false, character: "*", x: title.opts.x-1, y: title.opts.y-1});
+        title.startline = new Physics.shape("rect",{height: 2, width: title.startbox.x-(title.optsbox.x+title.optsbox.width)-10, character: "_", x: title.optsbox.x+title.optsbox.width+5, y: title.start.y+2});
 
-        title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+        title.makerbox = new Physics.shape("rect",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
 
         titleplayer.x = ((Physics.width-titleplayer.width)/2);
         titleplayer.y = title.startline.y-titleplayer.height;
@@ -214,7 +213,7 @@
 
         loading.load.x = ((Physics.width-loading.load.width)/2);
         loading.load.y = ((Physics.height-loading.load.height)/2);
-        loading.loadbox = new Physics.shape("box",{height: loading.load.height+3, width: loading.load.width+3, filled: false, character: "*", x: loading.load.x-2, y: loading.load.y-1});
+        loading.loadbox = new Physics.shape("rect",{height: loading.load.height+3, width: loading.load.width+3, filled: false, character: "*", x: loading.load.x-2, y: loading.load.y-1});
 
         var credits = {
             
@@ -456,10 +455,10 @@
                                         showcursor = true;
                                     },300);
                                 } else {
-                                    title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "•", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+                                    title.makerbox = new Physics.shape("rect",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "•", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
                                 }
                             } else {
-                                title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+                                title.makerbox = new Physics.shape("rect",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
                             }
                         } else {
                             console.warn("No mouse movement seen; relMousePos undefined");

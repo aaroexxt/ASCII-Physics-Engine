@@ -18,13 +18,13 @@ function generateUUID(){
     return uuid;
 }
 
-console.typeable = function(type,eval,evalontype) {
-	eval = eval || "";
+console.typeable = function(type,eva,evalontype) {
+	eva = eva || "";
 	evalontype = evalontype || "";
 	Object.defineProperty(window, type, {
         get: function() {
         console.function(evalontype);
-    }}),console.function(eval);
+    }}),console.function(eva);
 }
 
 console.eval = function(evalu) {

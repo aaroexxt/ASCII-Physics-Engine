@@ -12,17 +12,89 @@
         <script>
             Physics.element = ID("phys"); //Set the element
             Physics.init(); //Initialize physics
+
+
+
             var box = new Physics.shape("rect",{height: 10, gravity: true, width: 10, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var vecDisp = new Physics.util.vectorDisplay(box, box.velocity);//, true, box.width+2); //display box vector normalized
-            var angDisp = new Physics.util.angleDisplay(box, box.velocity); //display box vector anle
+            var vecDisp = new Physics.util.vectorDisplay(box, box.velocity, true, box.width+2); //display box vector normalized
+            var angDisp = new Physics.util.angleDisplay(box, box.velocity); //display box vector angle
+            var dt = Physics.util.combineMeshes(Physics.util.asciitext.generateText("loading..."));
             vecDisp.multiplier = 1;
-            var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function() { //create a new renderloop
-                //vecDisp.update(); //update vector
+
+            var loop1 = new Physics.renderLoop({fps: 60, collision: false, onFrame: function() { //create a new renderloop
+                vecDisp.update(); //update vector
                 angDisp.update();
-            }},box,angDisp); //renderloop will render box
+                dt.mesh = Physics.util.combineMeshes(Physics.util.asciitext.generateText(String(Physics.currentFPS))).mesh;
+            }},box,vecDisp,angDisp,dt); //renderloop will render box
             box.controlGravity();
-            loop.start(); //Start loop
-            //loop.stop(); //<-- If you want to stop the loop, use this snippet
+
+
+
+
+            var ptsarr = [];
+            var steps = 16; //degree steps (16 and 8 are good)
+            var rad = 5; //radius
+            var dist = 20; //distance to travel along line
+            var finalang = 180;
+            var mag = 5; //sin magnitude
+            var i = finalang/steps;
+            for (var i = finalang/steps; i>0; i--) {
+                var angleoffset = steps*i/(finalang/360);
+                if (i*steps > 180) {
+                    var ptstartx = (Physics.width/2)+(rad*Math.cos(angleoffset)) //calculate starting point on circle
+                    var ptstarty = (Physics.height/2)+(rad*Math.sin(angleoffset))
+
+                    var ptendx = ptstartx+(dist*Math.cos(angleoffset)) //calculate end point
+                    var ptendy = ptstarty+(dist*Math.sin(angleoffset))
+                } else {
+                    var ptstartx = (Physics.width/2)-(rad*Math.cos(angleoffset)) //calculate starting point on circle
+                    var ptstarty = (Physics.height/2)-(rad*Math.sin(angleoffset))
+
+                    var ptendx = ptstartx-(dist*Math.cos(angleoffset)) //calculate end point
+                    var ptendy = ptstarty-(dist*Math.sin(angleoffset))
+                }
+                ptsarr.push([ptstartx,ptstarty,ptendx,ptendy]);
+            }
+            var testlines = [];
+            for (var i=0; i<ptsarr.length; i++) {
+                testlines.push(new Physics.shape("bline",{x1: ptsarr[i][0], y1: ptsarr[i][1], x2: ptsarr[i][2], y2: ptsarr[i][3], character: "-"}));
+            }
+            var testcir = new Physics.shape("circle",{x: Physics.width/2-6, y:Physics.height/2+2, radius: rad, filled: false});
+
+
+            var loop2 = new Physics.renderLoop({fps: 60, collision: false, onFrame: function(rl){
+                if (typeof rl.options.counter == "undefined") {
+                    rl.options.counter = 0;
+                } else {
+                    rl.options.counter++;
+                }
+                if (rl.options.counter > testlines.length) {
+                    rl.options.counter = 0;
+                    if (testcir.filled) {
+                        testcir.filled = false;
+                        testcir.mesh = new Physics.shape("circle",{x: testcir.x, y:testcir.y, radius: testcir.radius, filled: false}).mesh;
+                    } else {
+                        testcir.filled = true;
+                        testcir.mesh = new Physics.shape("circle",{x: testcir.x, y:testcir.y, radius: testcir.radius, filled: true}).mesh;
+                    }
+                }
+                Physics.render(false, [testcir,testlines[rl.options.counter]]);
+                dt.mesh = Physics.util.combineMeshes(Physics.util.asciitext.generateText(String(Physics.currentFPS))).mesh;
+                console.log(rl.options.counter)
+            }},dt);
+
+
+
+
+
+            loop1.start(); //Start loop
+            setTimeout(function(){
+                loop1.stop();
+                loop2.start();
+                setTimeout(function(){
+                    loop2.stop();
+                },6000);
+            },6000); //<-- If you want to stop the loop, use this snippet
         </script>
     </body>
 </html>

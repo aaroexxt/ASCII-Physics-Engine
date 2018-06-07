@@ -1641,7 +1641,7 @@ var Physics = { //Class to represent all main functions of physics engine
                                                         }
                                                     }
                                                 } else {
-                                                    console.log('blank')
+                                                    console.error('blank')
                                                 }
                                             } catch(e) {
                                                 if (!Physics.ignoreMeshSize) {
@@ -1651,7 +1651,6 @@ var Physics = { //Class to represent all main functions of physics engine
                                             if (Physics.debugMode){console.log("[RENDER_RENDER] Adding to buffer (non-color) at x: "+(b+x)+", j val: "+j+", y: "+(j+y)+", char: "+mesh[j][b])}
                                         }
                                     }
-                                    
                                 }
                             }
                         }

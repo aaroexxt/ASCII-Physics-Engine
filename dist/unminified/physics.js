@@ -55,7 +55,7 @@ var Physics = { //Class to represent all main functions of physics engine
     oldDelta: 0,
     currentFPS: 0,
     //PHYSICS CONSTANTS
-    enableDeltaTimeCalculations: true, //can help mitigate low framerates by making physics work over a dynamic timescale
+    dynamicPhysics: true, //can help mitigate low framerates by making physics work over a dynamic timescale
     simpleDeltaCalculations: true, //use simple (fast) or complex (slow) calculations for delta time
     forceAverageDelta: false, //force delta time frame calculation to average over multiple frames (more stable in general, lag spikes are not handeled as well though)
     moreEfficientPhysics: true, //beta and kind of works, implements AABB collision to avoid having to do narrow collision for everything
@@ -2115,6 +2115,136 @@ var Physics = { //Class to represent all main functions of physics engine
         }
         Physics.renderLoopNext++;
 
+    },
+    /**
+    * Constructor for simulation loop
+    * @constructor
+    */
+    simulationLoop: function(opts) {
+        var args = arguments;
+        opts.seconds = opts.seconds || 5;
+        opts.frames = opts.frames || (opts.fps*opts.seconds)
+        opts.timeout = opts.timeout || (30 * 1000); //30 seconds to finish rendering else fail
+        if (typeof opts.collision == "undefined") {
+            opts.collision = true;
+        }
+        if (typeof opts.onFrame == "undefined") {
+            opts.onFrame = function(){};
+            opts.executeOnFrame = false;
+        } else {
+            opts.executeOnFrame = true;
+        }
+        if (typeof opts.clear == "undefined") {
+            opts.clear = true;
+        }
+        this.options = opts;
+        this.frameCount = 0;
+
+        this._this = this;
+        this.runLoop = true;
+        this.doneRendering = false;
+        this.args = args;
+        this.frames = []; //frames array
+        this.firstRun = true;
+        var _this = this;
+
+        function createSimulationLoop(_this, queuenum, args) { //this is going to get a little twisted to be able to pass variables from this to setinterval
+            _this.renderFunction = (function(){
+                if (_this.runLoop) {
+                    setTimeout(function(){
+                        _this.renderFunction();
+                    },0); //max speed timeout to render sequence
+                }
+                var shapesarr = [];
+                for (var i=1; i<args.length; i++) {
+                    try{if (Physics.debugMode) {console.log("[CREATESIMLOOP] Args into renderloop i: "+i+", arg: "+JSON.stringify(args[i]));}}catch(e){}
+                    shapesarr.push(args[i]);
+                }
+                if (_this.firstRun) {
+                    if (Physics.debugMode){console.log("[SIMLOOP_CREATE] firstrun renderloopauto: "+JSON.stringify(shapesarr));}
+                    _this.frames.push(Physics.render({clearScreen: true, renderToScreen: false},shapesarr));
+                    _this.frameCount++;
+                    _this.firstRun = false;
+                }
+                if (Physics.debugMode) {console.log("[SIMLOOP_CREATE] shapesarr: "+JSON.stringify(shapesarr));}
+                //console.log(JSON.stringify(_this.options))
+                if (_this.options.collision) {
+                    Physics.calculate_collisions(shapesarr); //No eval here either!
+                }
+                try {
+                    _this.frames.push(Physics.render({clearScreen: _this.options.clear, renderToScreen: false},shapesarr));
+                    _this.frameCount++;
+                } catch(e) {
+                    console.error("[SIMLOOP_LOOP] Error executing render function for renderLoop. E: '"+e+"'");
+                    _this.stop();
+                }
+                if (_this.frameCount > _this.options.frames) {
+                    if (Physics.debugMode) {console.log("[SIMLOOP_LOOP] Stopping simulation loop. Frame "+_this.frameCount+" has reached limit of "+_this.options.frames+" frames.")};
+                    _this.doneRendering = true;
+                    _this.runLoop = false;
+                } else {
+                    if (Physics.debugMode) {console.log("[SIMLOOP_LOOP] Processed frame "+_this.frameCount)}
+                }
+                if (_this.options.executeOnFrame) {
+                    try {
+                        _this.options.onFrame(_this);
+                    } catch(e) {
+                        console.error("[SIMLOOP_LOOP] Error executing onFrame function for renderLoop. E: '"+e+"'");
+                        if (Physics.stopRenderFunctionOnError) {
+                            _this.options.executeOnFrame = false;
+                        } else {
+                            console.warn("[SIMLOOP_LOOP] RenderLoop onFrame function has thrown an error, however flag is set so loop will not stop");
+                        }
+                    }
+                }
+            });
+            requestAnimationFrame(function(){
+                _this.renderFunction();
+            });
+        }
+        //createRenderLoop(this, this.options.queueNum, this.args);
+        this.start = function() { //start rendering loop
+            this.runLoop = true;
+            var _this = this;
+            var promise = new Promise(function(resolve, reject) {
+                createSimulationLoop(_this, _this.options.queueNum, _this.args); //pass the args to the function
+                var doneinterval = setInterval(function(){
+                    if (_this.doneRendering) {
+                        clearInterval(doneinterval);
+                        resolve(_this.frames);
+                    }
+                },10);
+                setTimeout(function(){
+                    console.warn("Stopped simulation loop on frame "+_this.frameCount+" out of target framecount "+_this.options.frames);
+                    clearInterval(doneinterval);
+                    _this.stop();
+                    reject(_this.frames);
+                },_this.options.timeout); //timeout to stop rendering after arbitrary amount of time
+            });
+            return promise;
+        }
+        this.stop = function() { //stop rendering loop
+            this.runLoop = false;
+        }
+        Physics.renderLoopNext++;
+
+    },
+    recallFrame: function() { //save the last rendered frame
+        return Physics.startString+Physics.renderBuffer.join(Physics.defaultNewlineChar);
+    },
+    displaySavedFrame: function(frame) {
+        if (typeof frame == "undefined") {
+            console.error("[DISPSAVEDFRAME] No frame in the form of an object or string was passed into function");
+            return;
+        } else {
+            var str = "";
+            if (frame.constructor == Array) {
+                str = Physics.startString+frame.join(Physics.defaultNewlineChar); //regen frame, probably renderbuffer
+            } else {
+                str = frame;
+            }
+            Physics.element.innerHTML = str;
+        }
     }
 }
 
@@ -2151,8 +2281,8 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function(ren
                 this.recalculateWeight();
             }
 
-            this.y += ((Physics.enableDeltaTimeCalculations) ? ((!Physics.simpleDeltaCalculations) ? (this.velocity.y * (Math.pow(gconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(gconst))) : (this.velocity.y * deltaTime)) : this.velocity.y); //calculate position change as integral from 0 to dt of (velocity * (drag^(x*dt)))dx
-            this.x += ((Physics.enableDeltaTimeCalculations) ? ((!Physics.simpleDeltaCalculations) ? (this.velocity.x * (Math.pow(fconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(fconst))) : (this.velocity.x * deltaTime)) : this.velocity.x);
+            this.y += ((Physics.dynamicPhysics) ? ((!Physics.simpleDeltaCalculations) ? (this.velocity.y * (Math.pow(gconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(gconst))) : (this.velocity.y * deltaTime)) : this.velocity.y); //calculate position change as integral from 0 to dt of (velocity * (drag^(x*dt)))dx
+            this.x += ((Physics.dynamicPhysics) ? ((!Physics.simpleDeltaCalculations) ? (this.velocity.x * (Math.pow(fconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(fconst))) : (this.velocity.x * deltaTime)) : this.velocity.x);
             if (Physics.debugMode) {
                 console.log("[PHYSICS_UPDATE] Complex calculations for x pos change: "+String((this.velocity.x * (Math.pow(fconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(fconst))))+" Simple calculations for x pos change: "+(this.velocity.x * deltaTime));
                 console.log("[PHYSICS_UPDATE] Complex calculations for y pos change: "+String((this.velocity.y * (Math.pow(gconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(gconst))))+" Simple calculations for y pos change: "+(this.velocity.y * deltaTime));

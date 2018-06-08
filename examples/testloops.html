@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Loop Physics!</title>
+        <script src="../dist/unminified/physics.js"></script> <!-- Include required libraries -->
+        <script src="../dist/unminified/helpLib.js"></script>
+        <script src="../dist/minified/stats.min.js"></script> <!-- This is optional! This is for the FPS counter in the top right of the screen -->
+        <meta charset="utf-8">
+    </head>
+    <body style="margin: 0; height: 100%; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+        <pre id="phys"></pre> <!-- Rendering element -->
+        <script>
+            Physics.element = ID("phys"); //Set the element
+            Physics.init(); //Initialize physics
+            //Physics.debugMode = true;
+            var box = new Physics.shape("rect",{height: 1, gravity: true, width: 1, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var box2 = new Physics.shape("rect",{height: 1, gravity: false, width: 1, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+
+            var simloop = new Physics.simulationLoop({frames: 200, collision: false, onFrame: function(t) { //create a new renderloop
+                console.log("frame reached (SIM): "+t.frameCount); //every frame just log a simple message, this can be replaced with whatever function you want
+            }},box,box2); //renderloop will render box
+
+            var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function(t) { //create a new renderloop
+                console.log("frame reached: "+t.frameCount); //every frame just log a simple message, this can be replaced with whatever function you want
+            }},box,box2); //renderloop will render box
+
+            simloop.start().then(function(frames){
+                var direction = 1;
+                var index = 0;
+                setInterval(function(){
+                    console.log("recalling index: "+index);
+                    Physics.displaySavedFrame("This is a demo of using saved frames. This simulation was created from two objects falling. Then, the frames are played in normal speed, then reverse,<br><br>to get the cool effect that you see here. <br><br>"+frames[index]);
+                    index+=direction; //formula which results in acceleration
+                    if (index >= frames.length || index < 0) {
+                        direction *= -1;
+                        index = (index < 0) ? 0 : frames.length;
+                    }
+                },10)
+            }, function(frames){
+                console.error("Oh no! There was an error with the simulation. Here are the frames that were generated: "+JSON.stringify(frames))
+            });
+            Physics.displaySavedFrame("Rendering frames...");
+            /*loop.start(); //Start loop
+            setTimeout(function(){
+                loop.stop();
+                simloop.start().then(function(frames){
+                    console.log("frames from simloop resolve: "+JSON.stringify(frames))
+                }, function(frames){
+                    console.log("frames from simloop reject: "+JSON.stringify(frames))
+                });
+            },1500)*/
+            //loop.stop(); <-- If you want to stop the loop, use this snippet
+        </script>
+    </body>
+</html>

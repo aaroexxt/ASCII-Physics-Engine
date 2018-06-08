@@ -1,0 +1,11 @@
+todo
+debug certain types of messages only
+DONE fix color rendering lines err
+DONE? save and recall frames
+
+3d engine overhaul:
+https://avik-das.github.io/build-your-own-raytracer/
+
+2d phys overhaul:
+https://www.ibm.com/developerworks/library/wa-build2dphysicsengine/index.html
+http://buildnewgames.com/gamephysics/

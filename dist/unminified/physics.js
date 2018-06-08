@@ -1473,7 +1473,7 @@ var Physics = { //Class to represent all main functions of physics engine
             options = {
                 clearScreen: true,
                 renderToScreen: true,
-                returnFrames: false
+                debugFrames: false
             }
             optionsDefined = false;
         } else {
@@ -1483,8 +1483,16 @@ var Physics = { //Class to represent all main functions of physics engine
             if (typeof options.renderToScreen == "undefined") { //determines whether the generated render is actually drawn to screen
                 options.renderToScreen = true;
             }
-            if (typeof options.returnFrames == "undefined") { //not rendering to screen a
-                options.returnFrames = false;
+            if (typeof options.debugFrames == "undefined") { //not rendering to screen a
+                options.debugFrames = false;
+            }
+            var optionkeys = Object.keys(options);
+            var physicsOptions = ["clearScreen","renderToScreen","debugFrames"];
+            for (var i=0; i<optionkeys.length; i++) {
+                if (!physicsOptions.contains(optionkeys[i])) {
+                    console.error("[RENDER_PRE] Option '"+optionkeys[i]+"' is not a valid option for rendering. Valid options are "+JSON.stringify(physicsOptions))
+                    return;
+                }
             }
         }
         var generatedFrames = [];
@@ -1527,7 +1535,8 @@ var Physics = { //Class to represent all main functions of physics engine
                                 arrlist.push(arguments[i][j]);
                             } else {
                                 badshape = true;
-                                console.error("[RENDER_PRE] Invalid shape detected in array passed");
+                                console.error("[RENDER_PRE] Invalid shape detected in array passed to render");
+                                return;
                             }
                         }
                     } else {
@@ -1616,11 +1625,11 @@ var Physics = { //Class to represent all main functions of physics engine
 
                                         for (var b=0; b<args[i].mesh[j].length; b++) {
                                             if (Physics.renderBuffer[j+y][x+xOff] != " ") {
-                                                console.info("WARN CHAR: "+Physics.renderBuffer[j+y][x+xOff]+", y "+(j+y)+", x "+(x+xOff))
+                                                console.info("[RENDER_RENDER]: attempting to place colored chars ("+Physics.renderBuffer[j+y][x+xOff]+") at y "+(j+y)+", x "+(x+xOff)+" but there are pixels there")
                                             } else {
                                                 Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].slice(0, x+xOff) + args[i].colorMesh[j][b] + Physics.renderBuffer[j+y].slice(x+xOff+1)//x+(args[i].width || args[i].length)+xOff);
                                                 xOff+=args[i].colorMesh[j][b].length;
-                                                if (options.returnFrames) {
+                                                if (options.debugFrames) {
                                                     generatedFrames.push(JSON.parse(JSON.stringify(Physics.renderBuffer)));
                                                 }
                                                 if (Physics.debugMode){console.log("[RENDER_RENDER] Adding to buffer (COLOR) at x: "+(x)+", y: "+(j+y)+", previous chars there: "+Physics.renderBuffer[j+y][x]+", j val: "+j+", chars: "+args[i].colorMesh[j][b]+", offsetX: "+xOff)}
@@ -1648,7 +1657,7 @@ var Physics = { //Class to represent all main functions of physics engine
                                                             Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].replaceAt(b+x,args[i].mesh[j][b]);
                                                             Physics.charsPerFrame++;
                                                         }
-                                                        if (options.returnFrames) {
+                                                        if (options.debugFrames) {
                                                             generatedFrames.push(JSON.parse(JSON.stringify(Physics.renderBuffer)));
                                                         }
                                                     }
@@ -1675,13 +1684,13 @@ var Physics = { //Class to represent all main functions of physics engine
         if (Physics.charsPerFrame > 0) { //only render if more than 0 chars
             if (Physics.element.innerHTML != Physics.renderString && options.renderToScreen) { //only draw if different optimization
                 Physics.element.innerHTML = Physics.renderString; //draw it!
-                if (options.returnFrames) {
+                if (options.debugFrames) {
                     for (var i=0; i<generatedFrames.length; i++) { //for every frame in captured frames
                         generatedFrames[i] = (Physics.startString+generatedFrames[i].join(Physics.defaultNewlineChar));
                     }
                     return generatedFrames;
                 }
-            } else if (options.returnFrames) {
+            } else if (options.debugFrames) {
                 for (var i=0; i<generatedFrames.length; i++) { //for every frame in captured frames
                     generatedFrames[i] = (Physics.startString+generatedFrames[i].join(Physics.defaultNewlineChar));
                 }
@@ -2031,7 +2040,6 @@ var Physics = { //Class to represent all main functions of physics engine
                 var elapsed = now - then;
                 if (elapsed > fpsInterval) {
                     Physics.renderLoopPasts[queuenum] = now - (elapsed % fpsInterval);
-                    var renderstr = "Physics.render("+_this.options.clear+",";
                     var shapesarr = [];
                     for (var i=1; i<args.length; i++) {
                         try{if (Physics.debugMode) {console.log("[CREATERENDERLOOP] Args into renderloop i: "+i+", arg: "+JSON.stringify(args[i]));}}catch(e){}
@@ -2039,7 +2047,7 @@ var Physics = { //Class to represent all main functions of physics engine
                     }
                     if (_this.firstRun) {
                         if (Physics.debugMode){console.log("[RENDERLOOP_CREATE] firstrun renderloopauto: "+JSON.stringify(shapesarr));}
-                        Physics.render(true,shapesarr);
+                        Physics.render({clearScreen: true},shapesarr);
                         _this.frameCount++;
                         //eval(firstrunstr); //No eval here!!! Changed to array
                         _this.firstRun = false;
@@ -2050,7 +2058,7 @@ var Physics = { //Class to represent all main functions of physics engine
                         Physics.calculate_collisions(shapesarr); //No eval here either!
                     }
                     try {
-                        Physics.render(_this.options.clear,shapesarr); //still no eval!
+                        Physics.render({clearScreen: _this.options.clear},shapesarr); //still no eval!
                         _this.frameCount++;
                     } catch(e) {
                         console.error("[RENDERLOOP_LOOP] Error executing render function for renderLoop. E: '"+e+"'");

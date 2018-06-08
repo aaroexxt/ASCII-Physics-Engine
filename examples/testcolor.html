@@ -8,25 +8,33 @@
         <meta charset="utf-8">
     </head>
     <body style="margin: 0; height: 100%; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
-        <button onclick="loop.step();">Step Rendering</button>
-        <button onclick="if(loop.runLoop){loop.stop();}else{loop.start()}">S/S Rendering</button>
+        <button onclick="step()//loop.step();" style="position: absolute; left: 50px">Step Rendering</button>
+        <button onclick="if(loop.runLoop){loop.stop();}else{loop.start()}" style="position: absolute; left: 150px">S/S Rendering</button>
         <pre id="phys"></pre> <!-- Rendering element -->
         <script>
             Physics.element = ID("phys"); //Set the element
             Physics.renderInColor = true; //enable color mode
             Physics.enableDeltaTimeCalculations = false;
             Physics.init(); //Initialize physics
-            //Physics.debugMode = true;
+            Physics.debugMode = true;
             var box = new Physics.shape("rect",{height: 10, gravity: false, width: 10, color: "green", character: "*", x: 5, y: Physics.height-15}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
             var box2 = new Physics.shape("rect",{height: 10, gravity: false, width: 10, color: "red", character: "*", x: 10, y: Physics.height}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function(t) { //create a new renderloop
+            var box3 = new Physics.shape("rect",{height: 10, gravity: false, width: 10, color: "yellow", character: "*", x: 17, y: Physics.height-13});
+            /*var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function(t) { //create a new renderloop
                 Physics.renderInColor = !Physics.renderInColor;
                 console.log(t.frameCount)
-            }},box2,box); //renderloop will render box
+            }},box2,box); //renderloop will render box*/
+            var frames = Physics.render({returnFrames: true},box2,box,box3);
+            var index = 95;
+            var step = function(){
+                console.log("Displaying frame: "+index)
+                Physics.element.innerHTML = frames[index];
+                index++;
+            }
             box.controlGravity()
-            setTimeout(function(){
+            /*setTimeout(function(){
                 loop.step(); //Step loop
-            },200)
+            },200)*/
             //loop.stop(); <-- If you want to stop the loop, use this snippet
         </script>
     </body>

@@ -96,9 +96,25 @@
         setTimeout(function(){
             console.log("   ▄███████▄  ▄█          ▄████████     ███        ▄████████  ▄██████▄     ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ ████████▄  \n  ███    ███ ███         ███    ███ ▀█████████▄   ███    ███ ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ███   ▀███ \n  ███    ███ ███         ███    ███    ▀███▀▀██   ███    █▀  ███    ███   ███    ███ ███   ███   ███   ███    █▀  ███    ███ \n  ███    ███ ███         ███    ███     ███   ▀  ▄███▄▄▄     ███    ███  ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███    ███ \n▀█████████▀  ███       ▀███████████     ███     ▀▀███▀▀▀     ███    ███ ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███    ███ \n  ███        ███         ███    ███     ███       ███        ███    ███ ▀███████████ ███   ███   ███   ███    █▄  ███    ███ \n  ███        ███▌    ▄   ███    ███     ███       ███        ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ▄███ \n ▄████▀      █████▄▄██   ███    █▀     ▄████▀     ███         ▀██████▀    ███    ███  ▀█   ███   █▀    ██████████ ████████▀  \n             ▀                                                            ███    ███                                         ");
             //console.log("                         ___                                                                        \n_-_ _,,                 -   -_,                               _-_ _,,              ,,               \n   -/  )               (  ~/||    _                              -/  )             ||               \n  ~||_<   '\\\\/\\\\       (  / ||   < \\, ,._-_  /'\\\\ \\\\/\\\\         ~||_<    _-_   _-_ ||/\\  _-_  ,._-_ \n   || \\\\   || ;'        \\/==||   /-||  ||   || || || ||          || \\\\  || \\\\ ||   ||_< || \\\\  ||   \n   ,/--||  ||/          /_ _||  (( ||  ||   || || || ||          ,/--|| ||/   ||   || | ||/    ||   \n  _--_-'   |/          (  - \\\\,  \\/\\\\  \\\\,  \\\\,/  \\\\ \\\\         _--_-'  \\\\,/  \\\\,/ \\\\,\\ \\\\,/   \\\\,  \n (        (                                                    (                                    \n           -_-                                                                                      ");
+            console.typeable("collisioncheck",function(){
+                console.log("Type collisioncheck into the console to test collisions. (mostly for me) Note that the object being tested must be named 'player'.");
+            }, function() {
+                console.log("Testing collisions...");
+                player.y = 1000;
+                player.x = -1000;
+                Physics.render(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                Physics.calculate_collisions(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                console.log("Player colliding: bottom: "+player.collisionBottom+", top: "+player.collisionTop+", right: "+player.collisionRight+", left: "+player.collisionLeft);
+                setTimeout(function(){
+                    player.y = 10;
+                    player.x = 10;
+                    Physics.render(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                    Physics.calculate_collisions(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                    console.log("Player still colliding: bottom: "+player.collisionBottom+", top: "+player.collisionTop+", right: "+player.collisionRight+", left: "+player.collisionLeft);
+                },100)
+            });
             gameAudio.fade("in",3000, "");
             gameAudio.play();
-            console.typeable("collisioncheck","console.log(\"Type collisioncheck into the console to test collisions. (mostly for me) Note that the object being tested must be named \'player\'.\");","console.log(\"Testing collisions...\"); player.y = 1000; player.x = -1000; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft); setTimeout(function(){player.y = 10; player.x = 10; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player still colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft);},100);");
             console.log("[AUDIOMANAGER] Audio initialized");
             console.log("PHYSICS INITIALIZED");
             beginGame(60); //start game at 30fps
@@ -367,7 +383,7 @@
         }
 
         function genLevelStr(lnum) {
-            levelstr = "Physics.render(false, "
+            levelstr = "Physics.render({clearScreen: false}, "
             var usednums = [];
             var xpos = numbers[10].width;
             for (var i=0; i<String(lnum).length; i++) {
@@ -399,13 +415,13 @@
 
             now = Date.now();
             elapsed = now - then;
-
             if (elapsed > fpsInterval) {
+                //console.log("deltaframe: "+elapsed)
                 then = now - (elapsed % fpsInterval);
 
                 stats.begin();
 
-                var renderstr = "Physics.render(clearsc,";
+                var renderstr = "Physics.render({clearScreen: "+clearsc+"},";
                 var collisionstr = "Physics.calculate_collisions(";
                 for (var i=0; i<Object.keys(lvl).length; i++) {
                     renderstr+="lvl."+Object.keys(lvl)[i]+",";

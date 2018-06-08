@@ -1739,7 +1739,9 @@ var Physics = { //Class to represent all main functions of physics engine
                 args.push(arrlist[i]);
             }
         } else {
-            return;
+            for (var i=0; i<arguments.length; i++) {
+                args.push(arguments[i]);
+            }
         }
 
         if (args.length < 2) {

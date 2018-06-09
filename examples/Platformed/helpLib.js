@@ -18,17 +18,32 @@ function generateUUID(){
     return uuid;
 }
 
-console.typeable = function(type,eval,evalontype) {
-	eval = eval || "";
+console.typeable = function(type,eva,evalontype) {
+	eva = eva || "";
 	evalontype = evalontype || "";
 	Object.defineProperty(window, type, {
         get: function() {
-        console.eval(evalontype);
-    }}),console.eval(eval);
+        console.function(evalontype);
+    }}),console.function(eva);
 }
 
 console.eval = function(evalu) {
 	eval(evalu);
+}
+console.function = function(passed) { //smart function execution
+	if (typeof passed == "object") { //object with function and arguments
+		if (typeof passed.function == "function" && passed.arguments.constructor == Array) {
+			passed.function.apply(null,passed.arguments);
+		} else if (typeof passed.function == "function" && passed.arguments.constructor != Array) {
+			passed.function.call(null,passed.arguments);
+		} else {
+			console.error("Object passed to console.function does not contain valid function or arguments");
+		}
+	} else if (typeof passed == "function") {
+		passed();
+	} else {
+		console.error("Passed value to console.function is not a function or object");
+	}
 }
 
 function getParameterByName(name, url) {

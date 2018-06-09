@@ -60,7 +60,7 @@
             <em id="tbjlb" style="font-style: normal;">1000ms</em>
             <br>
             <label for="rec">(BETA, Rendering may be slow) Render in color?</label>
-            <input type="checkbox" name="rec" id="rec">
+            <input type="checkbox" name="rec" checked="true" id="rec">
             <br>
             <p>Wacky Effects :)</p>
             <label for="fbc">Clear frameBuffer on every frame?</label>
@@ -90,16 +90,32 @@
         <pre id="phys"></pre>
     </body>
     <script>
-        MAXIMIZEFPS = true;
         Physics.element = ID("phys");
         Physics.init();
+        Physics.renderInColor = true;
         Physics.element.style.lineHeight = String(Physics.initialLineHeight);
         setTimeout(function(){
             console.log("   ▄███████▄  ▄█          ▄████████     ███        ▄████████  ▄██████▄     ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ ████████▄  \n  ███    ███ ███         ███    ███ ▀█████████▄   ███    ███ ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ███   ▀███ \n  ███    ███ ███         ███    ███    ▀███▀▀██   ███    █▀  ███    ███   ███    ███ ███   ███   ███   ███    █▀  ███    ███ \n  ███    ███ ███         ███    ███     ███   ▀  ▄███▄▄▄     ███    ███  ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███    ███ \n▀█████████▀  ███       ▀███████████     ███     ▀▀███▀▀▀     ███    ███ ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███    ███ \n  ███        ███         ███    ███     ███       ███        ███    ███ ▀███████████ ███   ███   ███   ███    █▄  ███    ███ \n  ███        ███▌    ▄   ███    ███     ███       ███        ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ▄███ \n ▄████▀      █████▄▄██   ███    █▀     ▄████▀     ███         ▀██████▀    ███    ███  ▀█   ███   █▀    ██████████ ████████▀  \n             ▀                                                            ███    ███                                         ");
             //console.log("                         ___                                                                        \n_-_ _,,                 -   -_,                               _-_ _,,              ,,               \n   -/  )               (  ~/||    _                              -/  )             ||               \n  ~||_<   '\\\\/\\\\       (  / ||   < \\, ,._-_  /'\\\\ \\\\/\\\\         ~||_<    _-_   _-_ ||/\\  _-_  ,._-_ \n   || \\\\   || ;'        \\/==||   /-||  ||   || || || ||          || \\\\  || \\\\ ||   ||_< || \\\\  ||   \n   ,/--||  ||/          /_ _||  (( ||  ||   || || || ||          ,/--|| ||/   ||   || | ||/    ||   \n  _--_-'   |/          (  - \\\\,  \\/\\\\  \\\\,  \\\\,/  \\\\ \\\\         _--_-'  \\\\,/  \\\\,/ \\\\,\\ \\\\,/   \\\\,  \n (        (                                                    (                                    \n           -_-                                                                                      ");
+            console.typeable("collisioncheck",function(){
+                console.log("Type collisioncheck into the console to test collisions. (mostly for me) Note that the object being tested must be named 'player'.");
+            }, function() {
+                console.log("Testing collisions...");
+                player.y = 1000;
+                player.x = -1000;
+                Physics.render(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                Physics.calculate_collisions(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                console.log("Player colliding: bottom: "+player.collisionBottom+", top: "+player.collisionTop+", right: "+player.collisionRight+", left: "+player.collisionLeft);
+                setTimeout(function(){
+                    player.y = 10;
+                    player.x = 10;
+                    Physics.render(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                    Physics.calculate_collisions(lvl3.platform,lvl3.platform2,lvl3.platform3,player,lvl3.tri);
+                    console.log("Player still colliding: bottom: "+player.collisionBottom+", top: "+player.collisionTop+", right: "+player.collisionRight+", left: "+player.collisionLeft);
+                },100)
+            });
             gameAudio.fade("in",3000, "");
             gameAudio.play();
-            console.typeable("collisioncheck","console.log(\"Type collisioncheck into the console to test collisions. (mostly for me) Note that the object being tested must be named \'player\'.\");","console.log(\"Testing collisions...\"); player.y = 1000; player.x = -1000; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft); setTimeout(function(){player.y = 10; player.x = 10; Physics.render(platform,platform2,platform3,player,tri); Physics.calculate_collisions(platform,platform2,platform3,player,tri); console.log(\"Player still colliding: bottom: \"+player.collisionBottom+\", top: \"+player.collisionTop+\", right: \"+player.collisionRight+\", left: \"+player.collisionLeft);},100);");
             console.log("[AUDIOMANAGER] Audio initialized");
             console.log("PHYSICS INITIALIZED");
             beginGame(60); //start game at 30fps
@@ -118,8 +134,8 @@
                 gameAudio.pause();
             },1000);
         }
-        var player = new Physics.shape("box",{height: 8, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y:0});
-        var titleplayer = new Physics.shape("box",{height: 6, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y: 0});
+        var player = new Physics.shape("rect",{height: 8, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y:0});
+        var titleplayer = new Physics.shape("rect",{height: 6, gravity: true, width: 9, color: "#66ffcc", character: "░", x: 0, y: 0});
         var enablePlayerEditor = false;
 
         var oldEPE = false;
@@ -187,11 +203,11 @@
         title.levelmaker.y = title.leftpoint.y+(title.leftpoint.height/2)-1;
 
 
-        title.startbox = new Physics.shape("box",{height: title.start.height+3, width: title.start.width+3, filled: false, character: "*", x: title.start.x-1, y: title.start.y-1}); //set up boxes around text; has to come later because start isn't initalized yet and render order matters
-        title.optsbox = new Physics.shape("box",{height: title.opts.height+3, width: title.opts.width+3, filled: false, character: "*", x: title.opts.x-1, y: title.opts.y-1});
-        title.startline = new Physics.shape("box",{height: 2, width: title.startbox.x-(title.optsbox.x+title.optsbox.width)-10, character: "_", x: title.optsbox.x+title.optsbox.width+5, y: title.start.y+2});
+        title.startbox = new Physics.shape("rect",{height: title.start.height+3, width: title.start.width+3, filled: false, character: "*", x: title.start.x-1, y: title.start.y-1}); //set up boxes around text; has to come later because start isn't initalized yet and render order matters
+        title.optsbox = new Physics.shape("rect",{height: title.opts.height+3, width: title.opts.width+3, filled: false, character: "*", x: title.opts.x-1, y: title.opts.y-1});
+        title.startline = new Physics.shape("rect",{height: 2, width: title.startbox.x-(title.optsbox.x+title.optsbox.width)-10, character: "_", x: title.optsbox.x+title.optsbox.width+5, y: title.start.y+2});
 
-        title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+        title.makerbox = new Physics.shape("rect",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
 
         titleplayer.x = ((Physics.width-titleplayer.width)/2);
         titleplayer.y = title.startline.y-titleplayer.height;
@@ -214,7 +230,7 @@
 
         loading.load.x = ((Physics.width-loading.load.width)/2);
         loading.load.y = ((Physics.height-loading.load.height)/2);
-        loading.loadbox = new Physics.shape("box",{height: loading.load.height+3, width: loading.load.width+3, filled: false, character: "*", x: loading.load.x-2, y: loading.load.y-1});
+        loading.loadbox = new Physics.shape("rect",{height: loading.load.height+3, width: loading.load.width+3, filled: false, character: "*", x: loading.load.x-2, y: loading.load.y-1});
 
         var credits = {
             
@@ -368,7 +384,7 @@
         }
 
         function genLevelStr(lnum) {
-            levelstr = "Physics.render(false, "
+            levelstr = "Physics.render({clearScreen: false}, "
             var usednums = [];
             var xpos = numbers[10].width;
             for (var i=0; i<String(lnum).length; i++) {
@@ -400,13 +416,13 @@
 
             now = Date.now();
             elapsed = now - then;
-
             if (elapsed > fpsInterval) {
+                //console.log("deltaframe: "+elapsed)
                 then = now - (elapsed % fpsInterval);
 
                 stats.begin();
 
-                var renderstr = "Physics.render(clearsc,";
+                var renderstr = "Physics.render({clearScreen: "+clearsc+"},";
                 var collisionstr = "Physics.calculate_collisions(";
                 for (var i=0; i<Object.keys(lvl).length; i++) {
                     renderstr+="lvl."+Object.keys(lvl)[i]+",";
@@ -456,10 +472,10 @@
                                         showcursor = true;
                                     },300);
                                 } else {
-                                    title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "•", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+                                    title.makerbox = new Physics.shape("rect",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "•", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
                                 }
                             } else {
-                                title.makerbox = new Physics.shape("box",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
+                                title.makerbox = new Physics.shape("rect",{height: title.levelmaker.height+4, width: title.levelmaker.width+4, filled: false, character: "*", x: title.levelmaker.x-2, y: title.levelmaker.y-2});
                             }
                         } else {
                             console.warn("No mouse movement seen; relMousePos undefined");

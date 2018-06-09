@@ -36,7 +36,7 @@ var Physics = { //Class to represent all main functions of physics engine
     defaultSpaceChar: " ",
     defaultShapeChar: "*",
     defaultNewlineChar: "<br>",
-    startString: "PHYV6:<br><br>",
+    startString: "PHYV7:<br><br>",
     //CONSTANTS
     gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.05), //gravitational constant
     frictionConstant: new notLoadedVector("frictionConstant",1,0), //frictional constant
@@ -1625,7 +1625,7 @@ var Physics = { //Class to represent all main functions of physics engine
 
                                         for (var b=0; b<args[i].mesh[j].length; b++) {
                                             if (Physics.renderBuffer[j+y][x+xOff] != " ") {
-                                                console.info("[RENDER_RENDER]: attempting to place colored chars ("+Physics.renderBuffer[j+y][x+xOff]+") at y "+(j+y)+", x "+(x+xOff)+" but there are pixels there")
+                                                if (Physics.debugMode) {console.log("[RENDER_RENDER]: attempting to place colored chars ("+Physics.renderBuffer[j+y][x+xOff]+") at y "+(j+y)+", x "+(x+xOff)+" but there are pixels there")};
                                             } else {
                                                 Physics.renderBuffer[j+y] = Physics.renderBuffer[j+y].slice(0, x+xOff) + args[i].colorMesh[j][b] + Physics.renderBuffer[j+y].slice(x+xOff+1)//x+(args[i].width || args[i].length)+xOff);
                                                 xOff+=args[i].colorMesh[j][b].length;

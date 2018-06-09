@@ -116,6 +116,8 @@ var Physics = { //Class to represent all main functions of physics engine
                 this.gravity = false;
             }
             this.velocity = new Physics.util.vec2d(0,0); //use new vector system!
+            this.acceleration = new Physics.util.vec2d(0,0);
+            this.position = new Physics.util.vec2d(this.x,this.y);
             this.collide = options.collide;
             if (typeof this.collide === "undefined") {
                 this.collide = true;
@@ -1023,6 +1025,11 @@ var Physics = { //Class to represent all main functions of physics engine
             this.divide = function(vec) {
                 this.x /= vec.x;
                 this.y /= vec.y;
+                return this;
+            }
+            this.scale = function(scalar) {
+                this.x *= scalar;
+                this.y *= scalar;
                 return this;
             }
             return this;
@@ -2248,7 +2255,7 @@ var Physics = { //Class to represent all main functions of physics engine
     }
 }
 
-Physics.shape.prototype.update = Physics.shape3d.prototype.update = function(render) {//don't need vector display calculate because it won't be used (no gravity)
+Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {//don't need vector display calculate because it won't be used (no gravity)
     this.calculate();
 
     var deltaTime = (Physics.forceAverageDelta) ? ((Physics.oldDelta+((Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond)))/2) : (Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond); //calculate deltatime as ratio between tme since last update and updates per second vs calculate deltatime since last frame as ratio between time between last update and updates per second averaged with the last frames delta to redce spikes
@@ -2259,82 +2266,29 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function(ren
     var frictionRatio = 1 / (0.3 + (deltaTime * Physics.frictionConstant.x));
     var gravityRatio = 1 / (0.7 + (deltaTime * Physics.gravitationalConstant.y));
 
-    render = render || false;
     if (typeof this.gravity === "undefined" || typeof this.velocity.x === "undefined" || typeof this.velocity.y === "undefined") {
             console.error("[PHYSICS_UPDATE] Object passed in to update function has no gravity constants");
     } else {
-        if (this.gravity || Physics.allGravity) {
-            this.velocity.x = constrain(this.velocity.x,-Physics.terminalVelocity,Physics.terminalVelocity);
-            this.velocity.y = constrain(this.velocity.y,-Physics.terminalVelocity,Physics.terminalVelocity);
-            if (this.y+this.height == Physics.height) {
-                this.velocity.y = 0;
-            }
-            /*if (this.x+this.width == Physics.width) {
-                this.velocity.x = 0;
-            }*/ //Causes glitches
-            //this.velocity.x *= frictionRatio;
-            //this.velocity.y *= gravityRatio;
-            var gconst = 0.99;
-            var fconst = 0.99;
+        //do velocity verlet integration
+        var FORCE = new Physics.util.vec2d(0,this.mass * Physics.gravitationalConstant.y);
+        //FORCE.y += ; //just gravity force for now
 
-            if (typeof this.mass == "undefined" || Physics.recalculateWeightOnFrame) { //recalculate character weight if it doesn't exist
-                this.recalculateWeight();
-            }
+        this.position = new Physics.util.vec2d(this.x,this.y);
+        var lastAccel = this.acceleration;
+        console.log("pos: "+JSON.stringify(this.position)+", vel: "+JSON.stringify(this.velocity)+", accel: "+JSON.stringify(this.acceleration)+", lastAccel: "+JSON.stringify(lastAccel))
 
-            this.y += ((Physics.dynamicPhysics) ? ((!Physics.simpleDeltaCalculations) ? (this.velocity.y * (Math.pow(gconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(gconst))) : (this.velocity.y * deltaTime)) : this.velocity.y); //calculate position change as integral from 0 to dt of (velocity * (drag^(x*dt)))dx
-            this.x += ((Physics.dynamicPhysics) ? ((!Physics.simpleDeltaCalculations) ? (this.velocity.x * (Math.pow(fconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(fconst))) : (this.velocity.x * deltaTime)) : this.velocity.x);
-            if (Physics.debugMode) {
-                console.log("[PHYSICS_UPDATE] Complex calculations for x pos change: "+String((this.velocity.x * (Math.pow(fconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(fconst))))+" Simple calculations for x pos change: "+(this.velocity.x * deltaTime));
-                console.log("[PHYSICS_UPDATE] Complex calculations for y pos change: "+String((this.velocity.y * (Math.pow(gconst,(deltaTime*deltaTime))-1) / (deltaTime*Math.log(gconst))))+" Simple calculations for y pos change: "+(this.velocity.y * deltaTime));
-                console.log("[PHYSICS_UPDATE] Δtime between frames: "+deltaTime);
-            }
+        this.position.add(this.velocity.scale(deltaTime).add(lastAccel.scale(0.5).scale(deltaTime^2))); //position integration
+        console.log("new pos: "+JSON.stringify(this.position))
+        this.x = this.position.x;
+        this.y = this.position.y;
 
-            if (this.collisionBottom || this.collisionTop) {
-                /*if (this.velocity.y > 0) { //old system
-                    this.velocity.y = -Physics.gravitationalConstant.y;
-                } else {
-                    this.velocity.y -= 0.5;
-                }*/
-                this.velocity.y = -0.25; //new system
-            } else {
-                if (this.velocity.y <= Physics.terminalVelocity && this.velocity.y >= -Physics.terminalVelocity) {
-                    this.velocity.y += this.weight; //add vectors
-                }
-
-                /*if (this.collisionRight) { //only do x check if y is stable to prevent drifting
-                    this.velocity.x = Physics.frictionConstant.x;
-                } else if (this.collisionLeft) {
-                    this.velocity.x = -Physics.frictionConstant.x;
-                }*/
-                if (this.collisionRight || this.collisionLeft) {
-                    this.velocity.x = 0;
-                }
-            }
-            if (this.velocity.x < Physics.frictionConstant.x && this.velocity.x > -Physics.frictionConstant.x) { //fix for glitch where momentum will be less than constant and oscillation occurs
-                this.velocity.x = 0;
-            }
-            if (this.velocity.y < Physics.gravitationalConstant.y && this.velocity.y > Physics.gravitationalConstant.y) {
-                this.velocity.y = 0;
-            }
-            if (this.collisionRight == false || this.collisionLeft == false) {
-                if (this.velocity.x <= Physics.terminalVelocity && this.velocity.x >= -Physics.terminalVelocity) {
-                    if (this.velocity.x > 0) {
-                        this.velocity.x -= this.friction; //slow down if going positive x
-                    } else if (this.velocity.x < 0) {
-                        this.velocity.x += this.friction;
-                    }
-                }
-            }
-        }
-        if (this.height+this.y == Physics.height) {
-            this.velocity.y = 0; //used to be -2
-        }
+        var newAccel = FORCE.scale(1/this.mass); //calculate new acceleration with multiplying instead of dividing (1/mult)
+        var avgAccel = lastAccel.add(newAccel).scale(0.5);
+        console.log("FORCE: "+JSON.stringify(FORCE)+", newAccel: "+JSON.stringify(newAccel)+", avgAccel: "+JSON.stringify(avgAccel))
+        this.velocity.add(avgAccel.scale(deltaTime))
     }
 
     Physics.lastUpdate = Date.now();
-    if (render) {
-        Physics.render(false,this);
-    }
 }
 
 Physics.shape.prototype.calculate = Physics.shape3d.prototype.calculate = function() { //don't need vector display calculate because it won't be used

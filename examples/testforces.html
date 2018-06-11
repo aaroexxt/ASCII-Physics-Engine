@@ -12,13 +12,10 @@
         <script>
             Physics.element = ID("phys"); //Set the element
             Physics.init(); //Initialize physics
-            var box = new Physics.shape("rect",{height: 5, gravity: true, width: 5, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function() { //create a new renderloop
-            }},box); //renderloop will render box
+            var box = new Physics.shape("rect",{height: 5, gravity: true, width: 5, character: "*", x: 5, y: 5});
+            var loop = new Physics.renderLoop({fps: 30, collision: false},box); //renderloop will render box
+            loop.start();
             box.controlGravity();
-            loop.start(); //Start loop
-            loop.stop();
-            //loop.stop(); <-- If you want to stop the loop, use this snippet
         </script>
     </body>
 </html>

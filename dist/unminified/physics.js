@@ -38,10 +38,12 @@ var Physics = { //Class to represent all main functions of physics engine
     defaultNewlineChar: "<br>",
     startString: "PHYV7:<br><br>",
     //CONSTANTS
-    gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.05), //gravitational constant
-    frictionConstant: new notLoadedVector("frictionConstant",1,0), //frictional constant
-    weightPerCharacter: 0.4, //weight is calculated per character
-    terminalVelocity: 7, //maximum velocity in any direction
+    constants: {
+        gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.2), //gravitational constant
+        frictionConstant: new notLoadedVector("frictionConstant",1,0), //frictional constant
+        weightPerCharacter: 0.0001, //weight is calculated per character
+        terminalVelocity: 100 //maximum velocity in any direction
+    },
     ticksPerSecond: 60, //limit number of physics calls per second
     updatesPerSecond: 40, //limit number of gravity updates per second
     renderPerSecond: 50, //limit renders performed per second
@@ -118,6 +120,22 @@ var Physics = { //Class to represent all main functions of physics engine
             this.velocity = new Physics.util.vec2d(0,0); //use new vector system!
             this.acceleration = new Physics.util.vec2d(0,0);
             this.position = new Physics.util.vec2d(this.x,this.y);
+
+            this.coefficients = {
+                drag: 0.47,
+                staticFrictionCutoff: 0.3, //great table at https://www.school-for-champions.com/science/friction_sliding_coefficient.htm
+                kineticFriction: 0.48, //we will assume that the materials are oak on oak wood
+                rollingFriction: 0.002,
+                angularDamping: -1,
+                mu: 0.00001
+            }
+            this.rotation = {
+                alpha: 0,
+                omega: 0
+            }
+
+
+
             this.collide = options.collide;
             if (typeof this.collide === "undefined") {
                 this.collide = true;
@@ -361,7 +379,7 @@ var Physics = { //Class to represent all main functions of physics engine
                 this.calculate(); //regen pointTable
             }
             this.pointTable.uniqueify(); //remove calls for multiple points
-            this.update(); //update to start gravity and set updated point table
+            this.calculate(); //update to start gravity and set updated point table
             this.recalculateWeight(); //calculate weight
         }
     },
@@ -657,7 +675,7 @@ var Physics = { //Class to represent all main functions of physics engine
             this.calculate(); //regen pointTable
         }
         this.pointTable.uniqueify(); //remove calls for multiple points
-        this.update(); //update to start gravity and set updated point table
+        this.calculate(); //update to start gravity and set updated point table
         this.recalculateWeight(); //calculate weight
     },
     cameras: { //Object to hold different kinds of cameras for projection
@@ -1476,30 +1494,43 @@ var Physics = { //Class to represent all main functions of physics engine
     },
     render: function(options) {
         var optionsDefined = true; //keeps track of whether the options parameter is defined
-        if (typeof options == "undefined" || options.constructor !== Object) {
+        if (typeof options == "undefined" && (options.constructor != Physics.shape && options.constructor != Physics.shape3d)) { //not a shape?
+            if (typeof options == "undefined" || options.constructor !== Object) {
+                options = {
+                    clearScreen: true,
+                    renderToScreen: true,
+                    debugFrames: false
+                }
+                optionsDefined = false;
+            } else {
+                if (typeof options.clearScreen === "undefined") { //determines whether the renderbuffer is cleared every frame
+                    options.clearScreen = false;
+                }
+                if (typeof options.renderToScreen == "undefined") { //determines whether the generated render is actually drawn to screen
+                    options.renderToScreen = true;
+                }
+                if (typeof options.debugFrames == "undefined") { //not rendering to screen a
+                    options.debugFrames = false;
+                }
+                var optionkeys = Object.keys(options);
+                var physicsOptions = ["clearScreen","renderToScreen","debugFrames"];
+                for (var i=0; i<optionkeys.length; i++) {
+                    if (!physicsOptions.contains(optionkeys[i])) {
+                        console.error("[RENDER_PRE] Option '"+optionkeys[i]+"' is not a valid option for rendering. Valid options are "+JSON.stringify(physicsOptions))
+                        return;
+                    }
+                }
+            }
+        } else {
+            var args = [options];
+            for (var i=1; i<arguments.length; i++) { //omit the options
+                args.push(arguments[i]);
+            }
+            arguments = args; //push the shapes
             options = {
                 clearScreen: true,
                 renderToScreen: true,
                 debugFrames: false
-            }
-            optionsDefined = false;
-        } else {
-            if (typeof options.clearScreen === "undefined") { //determines whether the renderbuffer is cleared every frame
-                options.clearScreen = false;
-            }
-            if (typeof options.renderToScreen == "undefined") { //determines whether the generated render is actually drawn to screen
-                options.renderToScreen = true;
-            }
-            if (typeof options.debugFrames == "undefined") { //not rendering to screen a
-                options.debugFrames = false;
-            }
-            var optionkeys = Object.keys(options);
-            var physicsOptions = ["clearScreen","renderToScreen","debugFrames"];
-            for (var i=0; i<optionkeys.length; i++) {
-                if (!physicsOptions.contains(optionkeys[i])) {
-                    console.error("[RENDER_PRE] Option '"+optionkeys[i]+"' is not a valid option for rendering. Valid options are "+JSON.stringify(physicsOptions))
-                    return;
-                }
             }
         }
         var generatedFrames = [];
@@ -1978,7 +2009,7 @@ var Physics = { //Class to represent all main functions of physics engine
             if (Physics.debugMode || true) {
                 console.log("[INIT] Fixing notLoadedVector '"+notLoadedVectors[i][0]+"'");
             }
-            Physics[notLoadedVectors[i][0]] = new Physics.util.vec2d(notLoadedVectors[i][1],notLoadedVectors[i][2]);
+            Physics.constants[notLoadedVectors[i][0]] = new Physics.util.vec2d(notLoadedVectors[i][1],notLoadedVectors[i][2]);
         }
         notLoadedVectors = [];
         Physics.util.asciitext.init(); //initialize asciitext
@@ -2259,33 +2290,46 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
     this.calculate();
 
     var deltaTime = (Physics.forceAverageDelta) ? ((Physics.oldDelta+((Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond)))/2) : (Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond); //calculate deltatime as ratio between tme since last update and updates per second vs calculate deltatime since last frame as ratio between time between last update and updates per second averaged with the last frames delta to redce spikes
-    var fps = Math.round((1/deltaTime)*100)/100;
+    var fps = Math.round((1/deltaTime)*10000)/100;
     Physics.currentFPS = (fps == Infinity) ? 0 : fps;
     Physics.oldDelta = deltaTime; //average delta to avoid spikes
-
-    var frictionRatio = 1 / (0.3 + (deltaTime * Physics.frictionConstant.x));
-    var gravityRatio = 1 / (0.7 + (deltaTime * Physics.gravitationalConstant.y));
 
     if (typeof this.gravity === "undefined" || typeof this.velocity.x === "undefined" || typeof this.velocity.y === "undefined") {
             console.error("[PHYSICS_UPDATE] Object passed in to update function has no gravity constants");
     } else {
         //do velocity verlet integration
-        var FORCE = new Physics.util.vec2d(0,this.mass * Physics.gravitationalConstant.y);
-        //FORCE.y += ; //just gravity force for now
+        var FORCE = new Physics.util.vec2d(0,0);
+        FORCE.y += this.mass * Physics.constants.gravitationalConstant.y; //gravity
+        //FORCE.x += this.mass * Physics.frictionConstant.x;
+        FORCE.x = this.acceleration.x*this.coefficients.mu; //kinetic friction
+        /*if (FORCE.x < this.coefficients.staticFrictionCutoff*0.00000001) { //static friction
+            FORCE.x = 0;
+        }*/
+        if (box.velocity.x < this.coefficients.staticFrictionCutoff) {
+            box.velocity.x = 0;
+            box.acceleration.x = 0;
+        }
+
+        var TORQUE = 0;
+        TORQUE+=this.rotation.omega*this.coefficients.angularDamping;
 
         this.position = new Physics.util.vec2d(this.x,this.y);
         var lastAccel = this.acceleration;
         console.log("pos: "+JSON.stringify(this.position)+", vel: "+JSON.stringify(this.velocity)+", accel: "+JSON.stringify(this.acceleration)+", lastAccel: "+JSON.stringify(lastAccel))
 
         this.position.add(this.velocity.scale(deltaTime).add(lastAccel.scale(0.5).scale(deltaTime^2))); //position integration
-        console.log("new pos: "+JSON.stringify(this.position))
-        this.x = this.position.x;
-        this.y = this.position.y;
+        this.x = this.position.x/100;
+        this.y = this.position.y/100;
 
         var newAccel = FORCE.scale(1/this.mass); //calculate new acceleration with multiplying instead of dividing (1/mult)
         var avgAccel = lastAccel.add(newAccel).scale(0.5);
         console.log("FORCE: "+JSON.stringify(FORCE)+", newAccel: "+JSON.stringify(newAccel)+", avgAccel: "+JSON.stringify(avgAccel))
-        this.velocity.add(avgAccel.scale(deltaTime))
+        this.velocity.add(avgAccel.scale(deltaTime));
+
+        this.rotation.alpha = TORQUE/this.coefficients.J;
+        this.omega+=this.alpha*deltaTime;
+        var deltaTheta = this.omega*deltaTime;
+        this.rotation.theta+=deltaTheta;
     }
 
     Physics.lastUpdate = Date.now();
@@ -2309,6 +2353,25 @@ Physics.shape.prototype.calculate = Physics.shape3d.prototype.calculate = functi
     this.centerPoint = [(this.updPointTable[0][0]+(0.5*(this.width || this.radius || this.length || this.height || 0))),(this.updPointTable[0][1]+(0.5*(this.height || this.radius || this.length || this.width || 0)))];
 }
 
+Physics.shape.prototype.recalculateWeight = Physics.shape3d.prototype.recalculateWeight = Physics.util.vectorDisplay.prototype.recalculateWeight = function() {
+    var chars = 0; //recalculate chars
+    for (var i=0; i<this.mesh.length; i++) {
+        for (var j=0; j<this.mesh[i].length; j++) {
+            if (this.mesh[i][j] == this.character) {
+                chars++;
+            }
+        }
+    }
+    if (Physics.debugMode) {
+        console.log("[PHYSICS_RECALCWEIGHT] Recalculate Chars for shape, chars= "+chars+", UUID= "+this.UUID)
+    }
+    this.characters = chars; //square root characters
+    this.sqrtcharacters = Math.sqrt(chars);
+    this.mass = this.sqrtcharacters*Physics.constants.weightPerCharacter;
+    this.weight = Physics.constants.gravitationalConstant.y*this.mass; //calculate weight by g*m
+    this.friction = Physics.constants.frictionConstant.x*this.weight; //calculate friction by f*w
+}
+
 Physics.shape.prototype.regenColorMesh = Physics.shape3d.prototype.regenColorMesh = Physics.util.vectorDisplay.prototype.regenColorMesh = function(newColor) {
     if (typeof newColor == "undefined") {
         return console.error("[REGEN_COL_MESH] Passed color is undefined");
@@ -2327,25 +2390,6 @@ Physics.shape.prototype.regenColorMesh = Physics.shape3d.prototype.regenColorMes
             }
         }
     }
-}
-
-Physics.shape.prototype.recalculateWeight = Physics.shape3d.prototype.recalculateWeight = Physics.util.vectorDisplay.prototype.recalculateWeight = function() {
-    var chars = 0; //recalculate chars
-    for (var i=0; i<this.mesh.length; i++) {
-        for (var j=0; j<this.mesh[i].length; j++) {
-            if (this.mesh[i][j] == this.character) {
-                chars++;
-            }
-        }
-    }
-    if (Physics.debugMode) {
-        console.log("[PHYSICS_RECALCWEIGHT] Recalculate Chars for shape, chars= "+chars+", UUID= "+this.UUID)
-    }
-    this.characters = chars; //square root characters
-    this.sqrtcharacters = Math.sqrt(chars);
-    this.mass = this.sqrtcharacters*Physics.weightPerCharacter;
-    this.weight = Physics.gravitationalConstant.y*this.mass; //calculate weight by g*m
-    this.friction = Physics.frictionConstant.x*this.weight; //calculate friction by f*w
 }
 
 Physics.shape.prototype.moveTowardsObject = Physics.shape3d.prototype.moveTowardsObject = function(object,maxspeed) {
@@ -2387,27 +2431,27 @@ Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlRaw = 
         }
         if (map["38"] && play.enableUp) { //up
             timeSinceUpKey = Date.now()-lastKeyPress;
-            if (play.velocity.y < Physics.gravitationalConstant.y && timeSinceUpKey > timeBetweenJumps) {
+            if (play.velocity.y < Physics.constants.gravitationalConstant.y && timeSinceUpKey > timeBetweenJumps) {
                 lastKeyPress = Date.now();
                 play.y-=2;
                 setTimeout(function(){
-                    play.velocity.y = -3;
+                    play.velocity.y = -10;
                 },50);
             }
         }
         if (map["40"] && play.enableDown) { //down
-            if (play.y+play.height == Physics.height || play.velocity.y < Physics.gravitationalConstant.y) {
-                play.velocity.y = 3;
+            if (play.y+play.height == Physics.height || play.velocity.y < Physics.constants.gravitationalConstant.y) {
+                play.velocity.y = 10;
             }
         }
         if (map["37"] && play.enableLeft) { //left
-            if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.terminalVelocity) {
-                play.velocity.x = -3;
+            if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
+                play.velocity.x = -5;
             }
         }
         if (map["39"] && play.enableRight) { //right
-            if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.terminalVelocity) {
-                play.velocity.x = 3;
+            if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
+                play.velocity.x = 5;
             }
         }
     }

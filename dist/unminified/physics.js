@@ -1008,10 +1008,17 @@ var Physics = { //Class to represent all main functions of physics engine
                 var dy = this.y-vec.y;
                 return Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
             }
-            this.add = function(vec) {
-                this.x += vec.x;
-                this.y += vec.y;
-                return this;
+            this.add = function(vec,mod) {
+                if (typeof mod == "undefined") {
+                    mod = true;
+                }
+                if (mod) {
+                    this.x += vec.x;
+                    this.y += vec.y;
+                    return this;
+                } else {
+                    return new Physics.util.vec2d((this.x+vec.x),(this.y+vec.y));
+                }
             }
             this.mix = function(vec, amount) {
                 if (typeof amount === 'undefined') {
@@ -1033,22 +1040,42 @@ var Physics = { //Class to represent all main functions of physics engine
                 } else {
                     return new Physics.util.vec2d((this.x-vec.x),(this.y-vec.y));
                 }
-                
             }
-            this.multiply = function(vec) {
-                this.x *= vec.x;
-                this.y *= vec.y;
-                return this;
+            this.multiply = function(vec,mod) {
+                if (typeof mod == "undefined") {
+                    mod = true;
+                }
+                if (mod) {
+                    this.x *= vec.x;
+                    this.y *= vec.y;
+                    return this;
+                } else {
+                    return new Physics.util.vec2d((this.x*vec.x),(this.y*vec.y));
+                }
             }
-            this.divide = function(vec) {
-                this.x /= vec.x;
-                this.y /= vec.y;
-                return this;
+            this.divide = function(vec,mod) {
+                if (typeof mod == "undefined") {
+                    mod = true;
+                }
+                if (mod) {
+                    this.x /= vec.x;
+                    this.y /= vec.y;
+                    return this;
+                } else {
+                    return new Physics.util.vec2d((this.x/vec.x),(this.y/vec.y));
+                }
             }
             this.scale = function(scalar) {
-                this.x *= scalar;
-                this.y *= scalar;
-                return this;
+                if (typeof mod == "undefined") {
+                    mod = true;
+                }
+                if (mod) {
+                    this.x *= scalar;
+                    this.y *= scalar;
+                    return this;
+                } else {
+                    return new Physics.util.vec2d((this.x*scalar),(this.y*scalar));
+                }
             }
             return this;
         },

@@ -39,7 +39,7 @@ var Physics = { //Class to represent all main functions of physics engine
     startString: "PHYV7:<br><br>",
     //CONSTANTS
     constants: {
-        gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.2), //gravitational constant
+        gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.1), //gravitational constant
         frictionConstant: new notLoadedVector("frictionConstant",1,0), //frictional constant
         weightPerCharacter: 0.0001, //weight is calculated per character
         terminalVelocity: 100 //maximum velocity in any direction
@@ -97,7 +97,7 @@ var Physics = { //Class to represent all main functions of physics engine
         } else {
             this.x = options.x || 0;
             this.y = options.y || 0;
-            this.mesh = [];
+            this.originalMesh = [];
             this.colorMesh = [];
             this.onlyWriteNonemptyPixels = options.onlyWriteNonemptyPixels;
             if (typeof this.onlyWriteNonemptyPixels == "undefined") {
@@ -113,9 +113,9 @@ var Physics = { //Class to represent all main functions of physics engine
             }
 
             this.UUID = generateUUID();
-            this.gravity = options.gravity || false;
-            if (typeof this.gravity === "undefined" || typeof options.gravity === "undefined") {
-                this.gravity = false;
+            this.physics = options.physics || false;
+            if (typeof this.physics === "undefined" || typeof options.physics === "undefined") {
+                this.physics = false;
             }
             this.velocity = new Physics.util.vec2d(0,0); //use new vector system!
             this.acceleration = new Physics.util.vec2d(0,0);
@@ -127,14 +127,14 @@ var Physics = { //Class to represent all main functions of physics engine
                 kineticFriction: 0.48, //we will assume that the materials are oak on oak wood
                 rollingFriction: 0.002,
                 angularDamping: -1,
-                mu: 0.00001
+                mu: 0.01, //friction
+                J: -1
             }
             this.rotation = {
                 alpha: 0,
-                omega: 0
+                omega: 0,
+                theta: 0 //rotation in radians
             }
-
-
 
             this.collide = options.collide;
             if (typeof this.collide === "undefined") {
@@ -188,25 +188,25 @@ var Physics = { //Class to represent all main functions of physics engine
                 }
                 if (this.filled) {
                     for (var i=0; i<this.height; i++) {
-                        this.mesh[i] = "";
+                        this.originalMesh[i] = "";
                         this.colorMesh[i] = [];
                         for (var j=0; j<this.width; j++) {
-                            this.mesh[i]+=this.character;
+                            this.originalMesh[i]+=this.character;
                             this.colorMesh[i].push("<span style='color: "+this.color+";'>"+this.character+"</span>");
                             this.pointTable[this.pointTable.length] = [i,j];
                         }
                     }
                 } else {
                     for (var i=0; i<this.height; i++) {
-                        this.mesh[i] = "";
+                        this.originalMesh[i] = "";
                         this.colorMesh[i] = [];
                         for (var j=0; j<this.width; j++) {
                             if ((i == 0 || i == (this.height-1)) || (j == 0 || j == (this.width-1))) {
-                                this.mesh[i]+=this.character;
+                                this.originalMesh[i]+=this.character;
                                 this.colorMesh[i].push("<span style='color: "+this.color+";'>"+this.character+"</span>");
                                 this.pointTable[this.pointTable.length] = [i,j];
                             } else {
-                                this.mesh[i]+=Physics.defaultSpaceChar;
+                                this.originalMesh[i]+=Physics.defaultSpaceChar;
                                 this.colorMesh[i].push(Physics.defaultSpaceChar);
                             }
                         }
@@ -214,10 +214,10 @@ var Physics = { //Class to represent all main functions of physics engine
                 }
             } else if (type == "line") { //regular flat
                 this.length = options.length || 10;
-                this.mesh[0] = "";
+                this.originalMesh[0] = "";
                 this.colorMesh[0] = [];
                 for (var i=0; i<this.length; i++) {
-                    this.mesh[0]+=this.character;
+                    this.originalMesh[0]+=this.character;
                     this.colorMesh[0].push("<span style='color: "+this.color+";'>"+this.character+"</span>");
                     this.pointTable[this.pointTable.length] = [i,0];
                 }
@@ -228,22 +228,22 @@ var Physics = { //Class to represent all main functions of physics engine
                 this.y2 = options.y2 || 5;
                 var line = Physics.util.line(new Physics.util.point2d(this.x1, this.y1), new Physics.util.point2d(this.x2, this.y2));
                 var mesh = Physics.util.coords2mesh(line,this.character);
-                var trim = Physics.util.optimizeMesh(mesh.mesh);
-                this.mesh = trim.mesh;
+                var trim = Physics.util.optimizeMesh(mesh.originalMesh);
+                this.originalMesh = trim.originalMesh;
                 this.x+=trim.x;
                 this.y+=trim.y;
                 this.width = 0;
-                this.height = trim.mesh.length;
-                for (var i=0; i<trim.mesh.length; i++) {
-                    if (trim.mesh[i].length > this.width) {
-                        this.width = trim.mesh[i].length;
+                this.height = trim.originalMesh.length;
+                for (var i=0; i<trim.originalMesh.length; i++) {
+                    if (trim.originalMesh[i].length > this.width) {
+                        this.width = trim.originalMesh[i].length;
                     }
                     this.colorMesh[i] = [];
-                    for (var j=0; j<trim.mesh[i].length; j++) {
-                        if (trim.mesh[i][j] == " ") {
+                    for (var j=0; j<trim.originalMesh[i].length; j++) {
+                        if (trim.originalMesh[i][j] == " ") {
                             this.colorMesh[i].push(" ");
                         } else {
-                            this.colorMesh[i].push("<span style='color: "+this.color+";'>"+trim.mesh[i][j]+"</span>");
+                            this.colorMesh[i].push("<span style='color: "+this.color+";'>"+trim.originalMesh[i][j]+"</span>");
                             this.pointTable[this.pointTable.length] = [i,j];
                         }
                     }
@@ -253,10 +253,10 @@ var Physics = { //Class to represent all main functions of physics engine
                 this.width = options.width || options.height*2;
 
                 for (var i=0; i<this.height; i++) { //generate blank mask as a square
-                    this.mesh[i] = "";
+                    this.originalMesh[i] = "";
                     this.colorMesh[i] = [];
                     for (var j=0; j<this.width; j++) {
-                        this.mesh[i]+=Physics.defaultSpaceChar;
+                        this.originalMesh[i]+=Physics.defaultSpaceChar;
                         this.colorMesh[i].push(Physics.defaultSpaceChar);
                     }
                 }
@@ -264,8 +264,8 @@ var Physics = { //Class to represent all main functions of physics engine
                 var amount = 1;
                 for (var i=0; i<this.height; i++) {
                     for (var j=0; j<amount; j++) {
-                        this.mesh[i] = this.mesh[i].replaceAt((start+j),this.character);
-                        this.colorMesh[i].push(this.mesh[i].replaceAt((start+j),"<span style='color: "+this.color+";'>"+this.character+"</span>"));
+                        this.originalMesh[i] = this.originalMesh[i].replaceAt((start+j),this.character);
+                        this.colorMesh[i].push(this.originalMesh[i].replaceAt((start+j),"<span style='color: "+this.color+";'>"+this.character+"</span>"));
                         this.pointTable[this.pointTable.length] = [i,j];
                     }
                     start-=1;
@@ -278,13 +278,13 @@ var Physics = { //Class to represent all main functions of physics engine
                     this.width = 0;
                     this.height = options.mesh.length;
                     for (var i=0; i<options.mesh.length; i++) {
-                        this.mesh[i] = [];
+                        this.originalMesh[i] = [];
                         this.colorMesh[i] = [];
                         if (options.mesh[i].length > this.width) {
                             this.width = options.mesh[i].length;
                         }
                         for (var j=0; j<options.mesh[i].length; j++) {
-                            this.mesh[i] += options.mesh[i][j];
+                            this.originalMesh[i] += options.mesh[i][j];
                             if (options.mesh[i][j] == " " && this.overrideSpacesInCustomShape === true) {
                                 this.colorMesh[i].push(" ");
                             } else {
@@ -303,7 +303,7 @@ var Physics = { //Class to represent all main functions of physics engine
                     var centery = this.radius;
 
                     for (var i=0; i<=2*this.radius; i++) { //draw unfilled circle
-                        this.mesh[i] = "";
+                        this.originalMesh[i] = "";
                         this.colorMesh[i] = [];
                         for (var j=0; j<=2*this.radius; j++) {
 
@@ -313,27 +313,27 @@ var Physics = { //Class to represent all main functions of physics engine
                             var dx=centerx-offsetx;
                             var dy=centery-offsety;
                             if ((dx*dx + dy*dy) <= (this.radius*this.radius)) {
-                                this.mesh[i]+=this.character;
+                                this.originalMesh[i]+=this.character;
                                 this.colorMesh[i].push("<span style='color: "+this.color+";'>"+this.character+"</span>");
                                 this.pointTable[this.pointTable.length] = [i,j];
                             } else {
-                                this.mesh[i]+=Physics.defaultSpaceChar;
+                                this.originalMesh[i]+=Physics.defaultSpaceChar;
                                 this.colorMesh[i].push(Physics.defaultSpaceChar);
                             }
                         }
                     }
                 } else if (this.filled == "cool") {
                     for (var i=0; i<=2*this.radius; i++) { //draw unfilled circle
-                        this.mesh[i] = "";
+                        this.originalMesh[i] = "";
                         this.colorMesh[i] = [];
                         for (var j=0; j<=2*this.radius; j++) {
                             var distance = Math.sqrt((i-this.radius)*(i-this.radius) + (j-this.radius)*(j-this.radius));
                             if (distance>this.radius-0.5 && distance<this.radius+0.5) {
                                 this.pointTable[this.pointTable.length] = [i,j];
-                                this.mesh[i]+=this.character;
+                                this.originalMesh[i]+=this.character;
                                 this.colorMesh[i].push("<span style='color: "+this.color+";'>"+this.character+"</span>");
                             } else {
-                                this.mesh[i]+=Physics.defaultSpaceChar;
+                                this.originalMesh[i]+=Physics.defaultSpaceChar;
                                 this.colorMesh[i].push(Physics.defaultSpaceChar);
                             }
                         }
@@ -349,22 +349,22 @@ var Physics = { //Class to represent all main functions of physics engine
                             var rouy = Math.round(j)+this.radius;
                             //console.log("x: "+roux+", y: "+rouy)
                             this.pointTable[this.pointTable.length] = [i,j];
-                            this.mesh[rouy] = this.mesh[rouy].replaceAt(roux,this.character);
+                            this.originalMesh[rouy] = this.originalMesh[rouy].replaceAt(roux,this.character);
                             this.colorMesh[rouy][roux] = "<span style='color: "+this.color+";'>"+this.character+"</span>";
                         }
                     }
                 } else {
                     for (var i=0; i<=2*this.radius; i++) {
-                        this.mesh[i] = "";
+                        this.originalMesh[i] = "";
                         this.colorMesh[i] = [];
                         for (var j=0; j<=2*this.radius; j++) {
                             var distance = Math.sqrt((i-this.radius)*(i-this.radius) + (j-this.radius)*(j-this.radius));
                             if (distance>this.radius-0.5 && distance<this.radius+0.5) {
-                                this.mesh[i]+=this.character;
+                                this.originalMesh[i]+=this.character;
                                 this.colorMesh[i].push("<span style='color: "+this.color+";'>"+this.character+"</span>");
                                 this.pointTable[this.pointTable.length] = [i,j];
                             } else {
-                                this.mesh[i]+=Physics.defaultSpaceChar;
+                                this.originalMesh[i]+=Physics.defaultSpaceChar;
                                 this.colorMesh[i].push(Physics.defaultSpaceChar);
                             }
                         }
@@ -373,12 +373,25 @@ var Physics = { //Class to represent all main functions of physics engine
             } else {
                 console.error("[SHAPE_CONSTRUCT] Shape "+this.type+" not found. There may be errors rendering.");
             }
+            this.rotate = function(angle,orMesh) {
+                if (typeof orMesh == "undefined") {
+                    if (typeof this.originalMesh == "undefined") {
+                        console.error("[ROTATE_SHAPE] No original mesh to rotate provided and shape does not have original mesh property");
+                    } else {
+                        orMesh = this.originalMesh;
+                    }
+                }
+                this.mesh = orMesh;
+            }
+            this.rotate(this.rotation.theta,this.originalMesh);
             if (Physics.trimMeshOnShapeCreation) {
-                this.mesh = Physics.util.trimMesh(this.mesh);
+                this.originalMesh = Physics.util.trimMesh(this.originalMesh);
+                this.rotate(this.rotation.theta,this.originalMesh);
                 this.regenColorMesh(this.color); //regen color mesh
                 this.calculate(); //regen pointTable
             }
             this.pointTable.uniqueify(); //remove calls for multiple points
+            
             this.calculate(); //update to start gravity and set updated point table
             this.recalculateWeight(); //calculate weight
         }
@@ -411,9 +424,9 @@ var Physics = { //Class to represent all main functions of physics engine
         }
 
         this.UUID = generateUUID();
-        this.gravity = options.gravity || false;
-        if (typeof this.gravity === "undefined" || typeof options.gravity === "undefined") {
-            this.gravity = false;
+        this.physics = options.physics || false;
+        if (typeof this.physics === "undefined" || typeof options.physics === "undefined") {
+            this.physics = false;
         }
         this.velocity = new Physics.util.vec2d(0,0); //use new vector system!
         this.collide = options.collide;
@@ -846,7 +859,7 @@ var Physics = { //Class to represent all main functions of physics engine
             this.multiplier = 1;
             this.normalize = normalize;
             this.normmult = normmult;
-            this.gravity = false;
+            this.physics = false;
             this.onlyWriteNonemptyPixels = true;
             this.colorMesh = ["VecNotCompatible"]; //noncompatible with color for now
             this.mx = Math.round(this.centerPoint[0]);
@@ -902,7 +915,7 @@ var Physics = { //Class to represent all main functions of physics engine
             this.multiplier = 1;
             this.normalize = normalize;
             this.normmult = normmult;
-            this.gravity = false;
+            this.physics = false;
             this.onlyWriteNonemptyPixels = true;
             this.colorMesh = ["VecNotCompatible"]; //noncompatible with color for now
             this.mx = Math.round(this.centerPoint[0]);
@@ -1641,7 +1654,7 @@ var Physics = { //Class to represent all main functions of physics engine
             if (args[i] != true && args[i] != false && typeof args[i] !== "undefined") {
                 //alert(JSON.stringify(args[i]))
                 //try {
-                    if ((args[i].gravity == true || Physics.allGravity) && (nextUpdateReached || true)) { //calculate gravity
+                    if ((args[i].physics == true || Physics.allGravity) && (nextUpdateReached || true)) { //calculate gravity
                         if (Physics.debugMode) {console.log("[RENDER_MAIN] Updating velocity for shape: "+args[i].type+", UUID: "+args[i].UUID+" (velX: "+args[i].velocity.x+", velY: "+args[i].velocity.y+")")}
                             args[i].update(false);
                     }
@@ -2236,21 +2249,31 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
     Physics.currentFPS = (fps == Infinity) ? 0 : fps;
     Physics.oldDelta = deltaTime; //average delta to avoid spikes
 
-    if (typeof this.gravity === "undefined" || typeof this.velocity.x === "undefined" || typeof this.velocity.y === "undefined") {
+    if (typeof this.physics === "undefined" || typeof this.velocity.x === "undefined" || typeof this.velocity.y === "undefined") {
             console.error("[PHYSICS_UPDATE] Object passed in to update function has no gravity constants");
     } else {
         //do velocity verlet integration
         var FORCE = new Physics.util.vec2d(0,0);
-        FORCE.y += this.mass * Physics.constants.gravitationalConstant.y; //gravity
+        if ((this.y+this.velocity.y)<(Physics.height-this.height)) { //within constraints
+            FORCE.y += this.mass * Physics.constants.gravitationalConstant.y; //gravity
+        } else {
+            this.velocity.y = 0;
+            this.acceleration.y = 0;
+            this.position.y = Physics.height;
+            this.y = this.position.y;
+        }
         //FORCE.x += this.mass * Physics.frictionConstant.x;
-        FORCE.x = this.acceleration.x*this.coefficients.mu; //kinetic friction
+        FORCE.x += this.coefficients.mu*-1*deltaTime; //kinetic friction in opposite direction to movement
         /*if (FORCE.x < this.coefficients.staticFrictionCutoff*0.00000001) { //static friction
             FORCE.x = 0;
         }*/
-        if (box.velocity.x < this.coefficients.staticFrictionCutoff) {
-            box.velocity.x = 0;
-            box.acceleration.x = 0;
+        if (this.velocity.x < this.coefficients.staticFrictionCutoff) {
+            this.velocity.x = 0;
+            this.acceleration.x = 0;
         }
+        /*if (this.velocity.x < Physics.frictionConstant.x && this.velocity.x > -Physics.frictionConstant.x) { //fix for glitch where momentum will be less than constant and oscillation occurs
+            this.velocity.x = 0;
+        }*/
 
         var TORQUE = 0;
         TORQUE+=this.rotation.omega*this.coefficients.angularDamping;
@@ -2265,13 +2288,15 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
 
         var newAccel = FORCE.scale(1/this.mass); //calculate new acceleration with multiplying instead of dividing (1/mult)
         var avgAccel = lastAccel.add(newAccel).scale(0.5);
-        //console.log("FORCE: "+JSON.stringify(FORCE)+", newAccel: "+JSON.stringify(newAccel)+", avgAccel: "+JSON.stringify(avgAccel))
+        console.log("FORCE: "+JSON.stringify(FORCE)+", newAccel: "+JSON.stringify(newAccel)+", avgAccel: "+JSON.stringify(avgAccel))
         this.velocity.add(avgAccel.scale(deltaTime));
 
         this.rotation.alpha = TORQUE/this.coefficients.J;
-        this.omega+=this.alpha*deltaTime;
-        var deltaTheta = this.omega*deltaTime;
+        this.rotation.omega+=this.rotation.alpha*deltaTime;
+        var deltaTheta = this.rotation.omega*deltaTime;
         this.rotation.theta+=deltaTheta;
+        console.log(this.rotation.theta)
+        this.rotate(this.rotation.theta); //rotate shape radians
     }
 
     Physics.lastUpdate = Date.now();
@@ -2312,6 +2337,7 @@ Physics.shape.prototype.recalculateWeight = Physics.shape3d.prototype.recalculat
     this.mass = this.sqrtcharacters*Physics.constants.weightPerCharacter;
     this.weight = Physics.constants.gravitationalConstant.y*this.mass; //calculate weight by g*m
     this.friction = Physics.constants.frictionConstant.x*this.weight; //calculate friction by f*w
+    this.coefficients.J = this.mass*((this.height*this.height)+(this.width*this.width) / 12000); //set J coeff
 }
 
 Physics.shape.prototype.regenColorMesh = Physics.shape3d.prototype.regenColorMesh = Physics.util.vectorDisplay.prototype.regenColorMesh = function(newColor) {

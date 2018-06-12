@@ -13,13 +13,13 @@
             Physics.element = ID("phys"); //Set the element
             //Physics.debugMode = true;
             Physics.init(); //Initialize physics
-            var box = new Physics.shape("rect",{height: 5, gravity: false, width: 5, character: "*", x: 5, y: 5});
-            var box2 = new Physics.shape("rect",{height: 10, width: 10, gravity: false, character: "*", x: 15, y: 10});
-            var loop = new Physics.renderLoop({fps: 1, collision: false, onFrame: function(){
+            var box = new Physics.shape("rect",{height: 5, physics: true, width: 5, character: "*", x: 5, y: 5});
+            var box2 = new Physics.shape("rect",{height: 10, width: 10, physics: false, character: "*", x: 15, y: 10});
+            var loop = new Physics.renderLoop({fps: 10, collision: false, onFrame: function(){
                 var satTest = Physics.satTest(box,box2);
 
             }},box,box2); //renderloop will render box
-            box.controlRaw(5);
+            box.controlRaw(100);
             loop.start();
             box.controlGravity();
         </script>

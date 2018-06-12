@@ -2253,14 +2253,26 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
             console.error("[PHYSICS_UPDATE] Object passed in to update function has no gravity constants");
     } else {
         //do velocity verlet integration
+        this.position = new Physics.util.vec2d(this.x,this.y);
+
         var FORCE = new Physics.util.vec2d(0,0);
-        if ((this.y+this.velocity.y)<(Physics.height-this.height)) { //within constraints
+        if ((this.y+this.velocity.y)>(Physics.height-this.height)) { //within constraints
+            if (typeof this.framesLimitedY == "undefined") {
+                this.framesLimitedY = 0;
+            }
+            this.framesLimitedY++;
+            
+        } else {
+            this.framesLimitedY = 0;
+        }
+        if (this.framesLimitedY < 10) {
+            console.log("fy ok")
             FORCE.y += this.mass * Physics.constants.gravitationalConstant.y; //gravity
         } else {
-            this.velocity.y = 0;
+            console.log("fy nok")
             this.acceleration.y = 0;
-            this.position.y = Physics.height;
-            this.y = this.position.y;
+            this.velocity.y = 1;
+            FORCE.y = 0;
         }
         //FORCE.x += this.mass * Physics.frictionConstant.x;
         FORCE.x += this.coefficients.mu*-1*deltaTime; //kinetic friction in opposite direction to movement
@@ -2278,7 +2290,6 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
         var TORQUE = 0;
         TORQUE+=this.rotation.omega*this.coefficients.angularDamping;
 
-        this.position = new Physics.util.vec2d(this.x,this.y);
         var lastAccel = this.acceleration;
         //console.log("pos: "+JSON.stringify(this.position)+", vel: "+JSON.stringify(this.velocity)+", accel: "+JSON.stringify(this.acceleration)+", lastAccel: "+JSON.stringify(lastAccel))
 

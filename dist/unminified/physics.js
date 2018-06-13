@@ -39,10 +39,11 @@ var Physics = { //Class to represent all main functions of physics engine
     startString: "PHYV7:<br><br>",
     //CONSTANTS
     constants: {
-        gravitationalConstant: new notLoadedVector("gravitationalConstant",0,0.1), //gravitational constant
-        frictionConstant: new notLoadedVector("frictionConstant",1,0), //frictional constant
-        weightPerCharacter: 0.0001, //weight is calculated per character
-        terminalVelocity: 100 //maximum velocity in any direction
+        gravitationalConstant: new notLoadedVector("gravitationalConstant",0,7.81), //gravitational constant
+        frictionConstant: new notLoadedVector("frictionMultiplier",1,0), //frictional constant
+        weightPerCharacter: 0.1, //weight is calculated per character
+        terminalVelocity: 100, //maximum velocity in any direction
+        forceScalar: 100
     },
     ticksPerSecond: 60, //limit number of physics calls per second
     updatesPerSecond: 40, //limit number of gravity updates per second
@@ -120,6 +121,7 @@ var Physics = { //Class to represent all main functions of physics engine
             this.velocity = new Physics.util.vec2d(0,0); //use new vector system!
             this.acceleration = new Physics.util.vec2d(0,0);
             this.position = new Physics.util.vec2d(this.x,this.y);
+            this.oldPosition = this.position;
 
             this.coefficients = {
                 drag: 0.47,
@@ -127,12 +129,12 @@ var Physics = { //Class to represent all main functions of physics engine
                 kineticFriction: 0.48, //we will assume that the materials are oak on oak wood
                 rollingFriction: 0.002,
                 angularDamping: -1,
-                mu: 0.01, //friction
+                mu: 2, //friction
                 J: -1
             }
             this.rotation = {
-                alpha: 0,
-                omega: 0,
+                alpha: 0, //angular acceleration
+                omega: 0, //angular velocity
                 theta: 0 //rotation in radians
             }
 
@@ -229,21 +231,22 @@ var Physics = { //Class to represent all main functions of physics engine
                 var line = Physics.util.line(new Physics.util.point2d(this.x1, this.y1), new Physics.util.point2d(this.x2, this.y2));
                 var mesh = Physics.util.coords2mesh(line,this.character);
                 var trim = Physics.util.optimizeMesh(mesh.originalMesh);
-                this.originalMesh = trim.originalMesh;
+                this.originalMesh = trim.mesh;
+
                 this.x+=trim.x;
                 this.y+=trim.y;
                 this.width = 0;
-                this.height = trim.originalMesh.length;
-                for (var i=0; i<trim.originalMesh.length; i++) {
-                    if (trim.originalMesh[i].length > this.width) {
-                        this.width = trim.originalMesh[i].length;
+                this.height = this.originalMesh.length;
+                for (var i=0; i<this.originalMesh.length; i++) {
+                    if (this.originalMesh[i].length > this.width) {
+                        this.width = this.originalMesh[i].length;
                     }
                     this.colorMesh[i] = [];
-                    for (var j=0; j<trim.originalMesh[i].length; j++) {
-                        if (trim.originalMesh[i][j] == " ") {
+                    for (var j=0; j<this.originalMesh[i].length; j++) {
+                        if (this.originalMesh[i][j] == " ") {
                             this.colorMesh[i].push(" ");
                         } else {
-                            this.colorMesh[i].push("<span style='color: "+this.color+";'>"+trim.originalMesh[i][j]+"</span>");
+                            this.colorMesh[i].push("<span style='color: "+this.color+";'>"+this.originalMesh[i][j]+"</span>");
                             this.pointTable[this.pointTable.length] = [i,j];
                         }
                     }
@@ -1078,7 +1081,7 @@ var Physics = { //Class to represent all main functions of physics engine
                     return new Physics.util.vec2d((this.x/vec.x),(this.y/vec.y));
                 }
             }
-            this.scale = function(scalar) {
+            this.scale = function(scalar,mod) {
                 if (typeof mod == "undefined") {
                     mod = true;
                 }
@@ -1931,6 +1934,10 @@ var Physics = { //Class to represent all main functions of physics engine
             */
         if (ainvolvedVertices.length === 2 && binvolvedVertices.length === 2) {
             return ainvolvedVertices[1];
+        } else if (ainvolvedVertices.length === 2 && binvolvedVertices.length === 0) {
+            return ainvolvedVertices[0];
+        } else if (binvolvedVertices.length === 2 && binvolvedVertices.length === 0) {
+            return binvolvedVertices[0];
         } else if (ainvolvedVertices.length === 1 && binvolvedVertices.length === 2) {
             return ainvolvedVertices[0];
         } else if (binvolvedVertices.length === 1 && ainvolvedVertices.length === 2) {
@@ -2244,7 +2251,7 @@ var Physics = { //Class to represent all main functions of physics engine
 Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {//don't need vector display calculate because it won't be used (no gravity)
     this.calculate();
 
-    var deltaTime = (Physics.forceAverageDelta) ? ((Physics.oldDelta+((Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond)))/2) : (Date.now()-Physics.lastUpdate)/(1000/Physics.updatesPerSecond); //calculate deltatime as ratio between tme since last update and updates per second vs calculate deltatime since last frame as ratio between time between last update and updates per second averaged with the last frames delta to redce spikes
+    var deltaTime = (Physics.forceAverageDelta) ? ((Physics.oldDelta+((Date.now()-Physics.lastUpdate)/1000))/2) : (Date.now()-Physics.lastUpdate)/1000; //calculate deltatime as ratio between tme since last update and updates per second vs calculate deltatime since last frame as ratio between time between last update and updates per second averaged with the last frames delta to redce spikes
     var fps = Math.round((1/deltaTime)*10000)/100;
     Physics.currentFPS = (fps == Infinity) ? 0 : fps;
     Physics.oldDelta = deltaTime; //average delta to avoid spikes
@@ -2252,34 +2259,22 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
     if (typeof this.physics === "undefined" || typeof this.velocity.x === "undefined" || typeof this.velocity.y === "undefined") {
             console.error("[PHYSICS_UPDATE] Object passed in to update function has no gravity constants");
     } else {
-        //do velocity verlet integration
+        //new physics system w/velocity verlet and rotation/angular momentum and intertia
         this.position = new Physics.util.vec2d(this.x,this.y);
 
         var FORCE = new Physics.util.vec2d(0,0);
-        if ((this.y+this.velocity.y)>(Physics.height-this.height)) { //within constraints
-            if (typeof this.framesLimitedY == "undefined") {
-                this.framesLimitedY = 0;
-            }
-            this.framesLimitedY++;
-            
-        } else {
-            this.framesLimitedY = 0;
-        }
-        if (this.framesLimitedY < 10) {
-            console.log("fy ok")
-            FORCE.y += this.mass * Physics.constants.gravitationalConstant.y; //gravity
-        } else {
-            console.log("fy nok")
+
+        FORCE.x += this.coefficients.mu*Physics.constants.frictionMultiplier.x*((this.velocity.x>0)?-1:1)*deltaTime*this.weight; //kinetic friction in opposite direction to movement
+
+        if ((this.y+this.velocity.y)>=(Physics.height-this.height)) { //only apply to y within constraints to avoid infinite forces that would eventually overflow
             this.acceleration.y = 0;
-            this.velocity.y = 1;
+            this.velocity.y = 0;
             FORCE.y = 0;
+        } else {
+            FORCE.y += this.mass * Physics.constants.gravitationalConstant.y; //gravity
         }
-        //FORCE.x += this.mass * Physics.frictionConstant.x;
-        FORCE.x += this.coefficients.mu*-1*deltaTime; //kinetic friction in opposite direction to movement
-        /*if (FORCE.x < this.coefficients.staticFrictionCutoff*0.00000001) { //static friction
-            FORCE.x = 0;
-        }*/
-        if (this.velocity.x < this.coefficients.staticFrictionCutoff) {
+
+        if (this.velocity.x < this.coefficients.staticFrictionCutoff && this.velocity.x > -this.coefficients.staticFrictionCutoff) {
             this.velocity.x = 0;
             this.acceleration.x = 0;
         }
@@ -2293,21 +2288,28 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
         var lastAccel = this.acceleration;
         //console.log("pos: "+JSON.stringify(this.position)+", vel: "+JSON.stringify(this.velocity)+", accel: "+JSON.stringify(this.acceleration)+", lastAccel: "+JSON.stringify(lastAccel))
 
-        this.position.add(this.velocity.scale(deltaTime).add(lastAccel.scale(0.5).scale(deltaTime^2))); //position integration
-        this.x = this.position.x/100;
-        this.y = this.position.y/100;
+        console.log("vel scale: "+JSON.stringify(this.velocity.scale(deltaTime,false))+" (dt="+deltaTime+"), add "+JSON.stringify(lastAccel.scale(0.5,false).scale(deltaTime*deltaTime,false)))
+        var deltaPos = this.velocity.scale(deltaTime,false).add(lastAccel.scale(0.5,false).scale((deltaTime*deltaTime),false)); //position integration
+        console.log("DeltaPO "+(JSON.stringify(deltaPos)))
+        deltaPos.scale(Physics.constants.forceScalar); //because math assumes meters but 1cm per pix is more correct
+        this.position.add(deltaPos);
+        this.x = this.position.x;
+        this.y = this.position.y;
 
-        var newAccel = FORCE.scale(1/this.mass); //calculate new acceleration with multiplying instead of dividing (1/mult)
+        this.oldPosition = this.position;
+
+        var newAccel = FORCE.scale(1/this.mass,false); //calculate new acceleration with multiplying instead of dividing (1/mult)
         var avgAccel = lastAccel.add(newAccel).scale(0.5);
-        console.log("FORCE: "+JSON.stringify(FORCE)+", newAccel: "+JSON.stringify(newAccel)+", avgAccel: "+JSON.stringify(avgAccel))
+        console.log("FORCE: "+JSON.stringify(FORCE)+"\nDT:"+deltaTime+"\nnewAccel: "+JSON.stringify(newAccel)+"\navgAccel: "+JSON.stringify(avgAccel)+"\nVEL:"+JSON.stringify(this.velocity)+"\nPOS:"+JSON.stringify(this.position))
         this.velocity.add(avgAccel.scale(deltaTime));
 
         this.rotation.alpha = TORQUE/this.coefficients.J;
         this.rotation.omega+=this.rotation.alpha*deltaTime;
         var deltaTheta = this.rotation.omega*deltaTime;
         this.rotation.theta+=deltaTheta;
-        console.log(this.rotation.theta)
+        console.log(this.rotation.theta);
         this.rotate(this.rotation.theta); //rotate shape radians
+
     }
 
     Physics.lastUpdate = Date.now();
@@ -2348,7 +2350,7 @@ Physics.shape.prototype.recalculateWeight = Physics.shape3d.prototype.recalculat
     this.mass = this.sqrtcharacters*Physics.constants.weightPerCharacter;
     this.weight = Physics.constants.gravitationalConstant.y*this.mass; //calculate weight by g*m
     this.friction = Physics.constants.frictionConstant.x*this.weight; //calculate friction by f*w
-    this.coefficients.J = this.mass*((this.height*this.height)+(this.width*this.width) / 12000); //set J coeff
+    //this.coefficients.J = this.mass*((this.height*this.height)+(this.width*this.width) / 10000); //set J coeff
 }
 
 Physics.shape.prototype.regenColorMesh = Physics.shape3d.prototype.regenColorMesh = Physics.util.vectorDisplay.prototype.regenColorMesh = function(newColor) {
@@ -2414,23 +2416,23 @@ Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlRaw = 
                 lastKeyPress = Date.now();
                 play.y-=2;
                 setTimeout(function(){
-                    play.velocity.y = -10;
+                    play.velocity.y = -1;
                 },50);
             }
         }
         if (map["40"] && play.enableDown) { //down
             if (play.y+play.height == Physics.height || play.velocity.y < Physics.constants.gravitationalConstant.y) {
-                play.velocity.y = 10;
+                play.velocity.y = 1;
             }
         }
         if (map["37"] && play.enableLeft) { //left
             if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
-                play.velocity.x = -5;
+                play.velocity.x = -0.5;
             }
         }
         if (map["39"] && play.enableRight) { //right
             if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
-                play.velocity.x = 5;
+                play.velocity.x = 0.5;
             }
         }
     }

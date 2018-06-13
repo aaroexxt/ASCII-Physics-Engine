@@ -15,36 +15,36 @@
             Physics.init(); //Initialize physics
             Physics.renderInColor = true;
             //Physics.debugMode = true;
-            var tri = new Physics.shape("triangle",{gravity: true, color: "green", width: 17, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var tri2 = new Physics.shape("triangle",{gravity: false, width: 15, color: "orange", character: "^", x: 25, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var tri3 = new Physics.shape("triangle",{gravity: false, width: 13, color: "blue", character: "&", x: 45, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var tri4 = new Physics.shape("triangle",{gravity: false, width: 11, color: "red", character: "?", x: 65, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var tri5 = new Physics.shape("triangle",{gravity: false, width: 7, filled: true, color: "pink", character: "B", x: 85, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
-            var p = new Physics.shape("rect",{gravity: false, width: 3, height: 3, filled: true, color: "limegreen", character: "█", x: 105, y: 5});
+            var tri = new Physics.shape("triangle",{physics:true, color: "green", width: 17, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var tri2 = new Physics.shape("triangle",{physics: false, width: 15, color: "orange", character: "^", x: 25, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var tri3 = new Physics.shape("triangle",{physics: false, width: 13, color: "blue", character: "&", x: 45, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var tri4 = new Physics.shape("triangle",{physics: false, width: 11, color: "red", character: "?", x: 65, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var tri5 = new Physics.shape("triangle",{physics: false, width: 7, filled: true, color: "pink", character: "B", x: 85, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var p = new Physics.shape("rect",{physics: false, width: 3, height: 3, filled: true, color: "limegreen", character: "█", x: 105, y: 5});
 
-            var simloop = new Physics.simulationLoop({frames: 800, collision: false, onFrame: function(t) { //create a new renderloop
+            var simloop = new Physics.simulationLoop({frames: 800, physics:true, collision: false, onFrame: function(t) { //create a new renderloop
                 console.log("frame reached (SIM): "+t.frameCount); //every frame just log a simple message, this can be replaced with whatever function you want
                 if (t.frameCount == 110) {
-                    tri2.gravity = true;
+                    tri2.physics = true;
                 } else if (t.frameCount == 220) {
-                    tri3.gravity = true;
+                    tri3.physics = true;
                 } else if (t.frameCount == 330) {
-                    tri4.gravity = true;
+                    tri4.physics = true;
                 } else if (t.frameCount == 440) {
-                    tri5.gravity = true;
+                    tri5.physics = true;
                 } else if (t.frameCount == 550) {
-                    p.gravity = true;
+                    p.physics = true;
                 } else if (t.frameCount == 600) {
-                    p.velocity.x = 3;
+                    p.velocity.x = 1;
                 } else if (t.frameCount == 700) {
-                    p.velocity.y = -100;
-                    p.velocity.x = 3;
+                    p.velocity.y = -10;
+                    p.velocity.x = 1;
                 } else if (t.frameCount == 770) {
-                    p.velocity.x = -3;
+                    p.velocity.x = -1;
                 }
             }},tri,tri2,tri3,tri4,tri5,p); //renderloop will render box
 
-            var loop = new Physics.renderLoop({fps: 60, collision: false, onFrame: function(t) { //create a new renderloop
+            var loop = new Physics.renderLoop({fps: 60, physics:true, collision: false, onFrame: function(t) { //create a new renderloop
                 console.log("frame reached: "+t.frameCount); //every frame just log a simple message, this can be replaced with whatever function you want
             }},tri,tri2,tri3,tri4,tri5,p); //renderloop will render box
 

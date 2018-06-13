@@ -15,13 +15,13 @@
 
 
 
-            var box = new Physics.shape("rect",{height: 10, gravity: true, width: 10, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
+            var box = new Physics.shape("rect",{height: 10, physics: true, width: 10, character: "*", x: 5, y: 5}); //Create a shape with a height of 1 and a width of 1 at x=5 and y=5, rendered with character '*' and is not affected by gravity
             var vecDisp = new Physics.util.vectorDisplay(box, box.velocity, true, box.width+2); //display box vector normalized
             var angDisp = new Physics.util.angleDisplay(box, box.velocity); //display box vector angle
             var dt = Physics.util.combineMeshes(Physics.util.asciitext.generateText("loading..."));
             vecDisp.multiplier = 1;
 
-            var loop1 = new Physics.renderLoop({fps: 60, collision: false, onFrame: function() { //create a new renderloop
+            var loop1 = new Physics.renderLoop({fps: 60, physics: true, onFrame: function() { //create a new renderloop
                 vecDisp.update(); //update vector
                 angDisp.update();
                 dt.mesh = Physics.util.combineMeshes(Physics.util.asciitext.generateText(String(Physics.currentFPS))).mesh;
@@ -78,7 +78,7 @@
                         testcir.mesh = new Physics.shape("circle",{x: testcir.x, y:testcir.y, radius: testcir.radius, filled: true}).mesh;
                     }
                 }
-                Physics.render(false, [testcir,testlines[rl.options.counter]]);
+                Physics.render({clearScreen: false}, [testcir,testlines[rl.options.counter]]);
                 dt.mesh = Physics.util.combineMeshes(Physics.util.asciitext.generateText(String(Physics.currentFPS))).mesh;
                 console.log(rl.options.counter)
             }},dt);

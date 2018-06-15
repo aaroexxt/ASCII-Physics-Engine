@@ -2,6 +2,7 @@ todo
 debug certain types of messages only
 DONE fix color rendering lines err
 DONE? save and recall frames
+friction slope with proper friction equations
 
 3d engine overhaul:
 https://avik-das.github.io/build-your-own-raytracer/

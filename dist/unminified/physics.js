@@ -376,24 +376,62 @@ var Physics = { //Class to represent all main functions of physics engine
             } else {
                 console.error("[SHAPE_CONSTRUCT] Shape "+this.type+" not found. There may be errors rendering.");
             }
-            this.rotate = function(angle,orMesh) {
-                if (typeof orMesh == "undefined") {
-                    if (typeof this.originalMesh == "undefined") {
-                        console.error("[ROTATE_SHAPE] No original mesh to rotate provided and shape does not have original mesh property");
+            this.rotate = function(angle,table) {
+                if (typeof table == "undefined") {
+                    if (typeof this.pointTable == "undefined") {
+                        console.error("[ROTATE_SHAPE] No point table to rotate provided and shape does not have original mesh property");
+                        return;
                     } else {
-                        orMesh = this.originalMesh;
+                        table = this.pointTable;
                     }
                 }
-                this.mesh = orMesh;
+                if (typeof this.centerPoint == "undefined") {
+                    console.error("[ROTATE_SHAPE] Centerpoint undefined");
+                    return;
+                }
+                if (typeof this.character == "undefined") {
+                    console.error("[ROTATE_SHAPE] Character undefined");
+                    return;
+                }
+                if (typeof angle == "undefined") {
+                    console.error("[ROTATE_SHAPE] Angle undefined");
+                    return;
+                } else {
+                    console.log("ang in "+Physics.util.conversion.radian2degrees(angle))
+                    var rad360 = Physics.util.conversion.degrees2radian(360);
+                    angle %= rad360;
+                    angle = (angle + rad360) % rad360;
+                    angle = Physics.util.conversion.degrees2radian(Math.round(Physics.util.conversion.radian2degrees(angle)))
+                    console.log("ang out "+Physics.util.conversion.radian2degrees(angle))
+                }
+                if (typeof this.rotation.theta == "undefined") {
+                    this.rotation.theta = 0;
+                }
+                if (this.rotation.theta == 0 || this.type == "circle") {
+                    this.mesh = this.originalMesh; //optimize
+                    return;
+                }
+                var rotTable = [];
+                var centerPoint = new Physics.util.vec2d(this.centerPoint[0],this.centerPoint[1])
+                for (var i=0; i<table.length; i++) {
+                    var point = new Physics.util.vec2d(table[i][0],table[i][1]); //convert to vector
+                    var rotPoint = point.rotate(angle,centerPoint);
+                    rotTable.push([Math.round(rotPoint.x),Math.round(rotPoint.y)]); //needs rounding to access valid pixels since pixels are in 1px increments
+                }
+                if (Physics.debugMode){console.log("rotTable: "+JSON.stringify(rotTable)+", centerPoint: "+JSON.stringify(centerPoint))}
+                var rotMesh = Physics.util.coords2mesh(rotTable,this.character,false,false)
+                var opt = Physics.util.optimizeMesh(rotMesh.mesh);
+                this.mesh = opt.mesh;
             }
-            this.rotate(this.rotation.theta,this.originalMesh);
+            this.mesh = this.originalMesh;
             if (Physics.trimMeshOnShapeCreation) {
                 this.originalMesh = Physics.util.trimMesh(this.originalMesh);
-                this.rotate(this.rotation.theta,this.originalMesh);
                 this.regenColorMesh(this.color); //regen color mesh
                 this.calculate(); //regen pointTable
             }
             this.pointTable.uniqueify(); //remove calls for multiple points
+            this.originalPointTable = JSON.parse(JSON.stringify(this.pointTable));
+            this.rotate(this.rotation.theta,this.pointTable);
             
             this.calculate(); //update to start gravity and set updated point table
             this.recalculateWeight(); //calculate weight
@@ -1093,6 +1131,32 @@ var Physics = { //Class to represent all main functions of physics engine
                     return new Physics.util.vec2d((this.x*scalar),(this.y*scalar));
                 }
             }
+            this.rotate = function(angle, center, mod) {
+                if (typeof mod == "undefined") {
+                    mod = true;
+                }
+                if (typeof center == "undefined") {
+                    console.error("[VEC_ROT] No center defined");
+                    return;
+                }
+                if (typeof angle == "undefined") {
+                    console.error("[VEC_ROT] No angle defined");
+                    return;
+                }
+                var x = this.x - center.x;
+                var y = this.y - center.y;
+
+                var x_prime = center.x + ((x * Math.cos(angle)) - (y * Math.sin(angle)));
+                var y_prime = center.y + ((x * Math.sin(angle)) + (y * Math.cos(angle)));
+
+                if (mod) {
+                    this.x = x_prime;
+                    this.y = y_prime;
+                    return this;
+                } else {
+                    return new Physics.util.vec2d(x_prime,y_prime);
+                }
+            };
             return this;
         },
         /**
@@ -1421,12 +1485,15 @@ var Physics = { //Class to represent all main functions of physics engine
             return {mesh: mesh, x: ((optX == -1 || optX == Infinity || optX == -Infinity) ? 0 : optX), y: ((optY == -1 || optY == Infinity || optY == -Infinity) ? 0 : optY)};
 
         },
-        coords2mesh: function(coords,character,map) { //convert array of coords to mesh
+        coords2mesh: function(coords,character,map,returnShape) { //convert array of coords to mesh
             if (coords.length == 0) {
                 return console.error("[COORDS2MESH] Coordinates array length is 0");
             }
             if (typeof map == "undefined") {
                 map = false;
+            }
+            if (typeof returnShape == "undefined") {
+                returnShape = true;
             }
 
             if (typeof character == "undefined") {
@@ -1449,12 +1516,6 @@ var Physics = { //Class to represent all main functions of physics engine
                 } else if (coords[i][1] > ymax) {
                     ymax = coords[i][1];
                 }
-            }
-            if (xmin == 0) {
-                xmin = 1;
-            }
-            if (ymin == 0) {
-                ymin = 1;
             }
             var shiftx = 0;
             if (xmin <= 0) {
@@ -1505,16 +1566,21 @@ var Physics = { //Class to represent all main functions of physics engine
             for (var i=0; i<ymax+1; i++) {
                 mesh[i] = JSON.parse(JSON.stringify(blankLine));
             }
+            //console.log(JSON.stringify(mappedcoords),JSON.stringify(mesh))
             for (var i=0; i<mappedcoords.length; i++) {
                 
-                if (mesh.length < mappedcoords[i][1]-1 || mesh[0].length < mappedcoords[i][0]-1 || typeof mesh[mappedcoords[i][1]-1] == "undefined") { //check if point exists in mesh
+                if (mesh.length < mappedcoords[i][1] || mesh[0].length < mappedcoords[i][0] || typeof mesh[mappedcoords[i][1]] == "undefined") { //check if point exists in mesh
                     return console.error("[COORDS2MESH] Point x: "+mappedcoords[i][0]+", y: "+mappedcoords[i][1]+", meshheight: "+mesh.length+", meshwidth: "+mesh[0].length+" doesn't exist in mesh")
                 }
-                mesh[mappedcoords[i][1]-1] = mesh[mappedcoords[i][1]-1].replaceAt(mappedcoords[i][0]-1,character); //subtract 1 because arrays start at index 0
+                mesh[mappedcoords[i][1]] = mesh[mappedcoords[i][1]].replaceAt(mappedcoords[i][0],character); //subtract 1 because arrays start at index 0
             }
             //return {mesh: mesh};
             mesh = Physics.util.trimMesh(mesh);
-            return new Physics.shape("custom", {mesh: mesh, x: xmin, y: ymin}); //return the shape
+            if (returnShape) {
+                return new Physics.shape("custom", {mesh: mesh, x: xmin, y: ymin}); //return the shape
+            } else {
+                return {mesh: mesh, x: xmin, y: ymin};
+            }
         }
         /*dramatic music plays* I leave this here as a tribute to when this didn't work. Whoever finds this is awesome! (this code renders coords directly to screen)
             var wstr = "";
@@ -2288,9 +2354,8 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
         var lastAccel = this.acceleration;
         //console.log("pos: "+JSON.stringify(this.position)+", vel: "+JSON.stringify(this.velocity)+", accel: "+JSON.stringify(this.acceleration)+", lastAccel: "+JSON.stringify(lastAccel))
 
-        console.log("vel scale: "+JSON.stringify(this.velocity.scale(deltaTime,false))+" (dt="+deltaTime+"), add "+JSON.stringify(lastAccel.scale(0.5,false).scale(deltaTime*deltaTime,false)))
+        //if (Physics.debugMode){console.log("vel scale: "+JSON.stringify(this.velocity.scale(deltaTime,false))+" (dt="+deltaTime+"), add "+JSON.stringify(lastAccel.scale(0.5,false).scale(deltaTime*deltaTime,false)))}
         var deltaPos = this.velocity.scale(deltaTime,false).add(lastAccel.scale(0.5,false).scale((deltaTime*deltaTime),false)); //position integration
-        console.log("DeltaPO "+(JSON.stringify(deltaPos)))
         deltaPos.scale(Physics.constants.forceScalar); //because math assumes meters but 1cm per pix is more correct
         this.position.add(deltaPos);
         this.x = this.position.x;
@@ -2300,14 +2365,14 @@ Physics.shape.prototype.update = Physics.shape3d.prototype.update = function() {
 
         var newAccel = FORCE.scale(1/this.mass,false); //calculate new acceleration with multiplying instead of dividing (1/mult)
         var avgAccel = lastAccel.add(newAccel).scale(0.5);
-        console.log("FORCE: "+JSON.stringify(FORCE)+"\nDT:"+deltaTime+"\nnewAccel: "+JSON.stringify(newAccel)+"\navgAccel: "+JSON.stringify(avgAccel)+"\nVEL:"+JSON.stringify(this.velocity)+"\nPOS:"+JSON.stringify(this.position))
+        if (Physics.debugMode){console.log("FORCE: "+JSON.stringify(FORCE)+"\nDT:"+deltaTime+"\nnewAccel: "+JSON.stringify(newAccel)+"\navgAccel: "+JSON.stringify(avgAccel)+"\nVEL:"+JSON.stringify(this.velocity)+"\nPOS:"+JSON.stringify(this.position)+"\nDeltaPO: "+(JSON.stringify(deltaPos)))}
         this.velocity.add(avgAccel.scale(deltaTime));
 
         this.rotation.alpha = TORQUE/this.coefficients.J;
         this.rotation.omega+=this.rotation.alpha*deltaTime;
         var deltaTheta = this.rotation.omega*deltaTime;
         this.rotation.theta+=deltaTheta;
-        console.log(this.rotation.theta);
+        if (this.rotation.theta != 0 && Physics.debugMode) {console.log(this.rotation.theta);}
         this.rotate(this.rotation.theta); //rotate shape radians
 
     }
@@ -2330,6 +2395,7 @@ Physics.shape.prototype.calculate = Physics.shape3d.prototype.calculate = functi
             }
         }
     }
+
     this.centerPoint = [(this.updPointTable[0][0]+(0.5*(this.width || this.radius || this.length || this.height || 0))),(this.updPointTable[0][1]+(0.5*(this.height || this.radius || this.length || this.width || 0)))];
 }
 
@@ -2402,7 +2468,7 @@ var timeSinceUpKey;
 var timeBetweenJumps = 900;
 var lastKeyPress = Date.now();
 var map = {};
-Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlRaw = function() {
+Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlGravity = function() {
     play = this;
     window.onkeydown = window.onkeyup = function(e) {
         var e = window.event ? window.event : e;
@@ -2426,13 +2492,13 @@ Physics.shape.prototype.controlGravity = Physics.shape3d.prototype.controlRaw = 
             }
         }
         if (map["37"] && play.enableLeft) { //left
-            if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
-                play.velocity.x = -0.5;
+            if (play.velocity.x < Physics.constants.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
+                play.velocity.x = -1;
             }
         }
         if (map["39"] && play.enableRight) { //right
-            if (play.velocity.x < Physics.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
-                play.velocity.x = 0.5;
+            if (play.velocity.x < Physics.constants.terminalVelocity && play.velocity.x > -Physics.constants.terminalVelocity) {
+                play.velocity.x = 1;
             }
         }
     }

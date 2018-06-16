@@ -138,6 +138,8 @@ var Physics = { //Class to represent all main functions of physics engine
                 theta: 0 //rotation in radians
             }
 
+            this.angularCenterpointOffset = [0,0];
+
             this.collide = options.collide;
             if (typeof this.collide === "undefined") {
                 this.collide = true;
@@ -169,6 +171,7 @@ var Physics = { //Class to represent all main functions of physics engine
             this.enableRight = options.enableRight;
 
             this.pointTable = [];
+            this.rotatedPointTable = [];
             this.updPointTable = [];
             this.collisionBottom = false;
             this.collisionTop = false;
@@ -397,17 +400,17 @@ var Physics = { //Class to represent all main functions of physics engine
                     console.error("[ROTATE_SHAPE] Angle undefined");
                     return;
                 } else {
-                    console.log("ang in "+Physics.util.conversion.radian2degrees(angle))
                     var rad360 = Physics.util.conversion.degrees2radian(360);
                     angle %= rad360;
                     angle = (angle + rad360) % rad360;
-                    angle = Physics.util.conversion.degrees2radian(Math.round(Physics.util.conversion.radian2degrees(angle)))
-                    console.log("ang out "+Physics.util.conversion.radian2degrees(angle))
+                    if (angle > rad360/2) {
+                        angle -= rad360;
+                    }
                 }
                 if (typeof this.rotation.theta == "undefined") {
                     this.rotation.theta = 0;
                 }
-                if (this.rotation.theta == 0 || this.type == "circle") {
+                if (angle == 0 || this.type == "circle") {
                     this.mesh = this.originalMesh; //optimize
                     return;
                 }
@@ -419,9 +422,18 @@ var Physics = { //Class to represent all main functions of physics engine
                     rotTable.push([Math.round(rotPoint.x),Math.round(rotPoint.y)]); //needs rounding to access valid pixels since pixels are in 1px increments
                 }
                 if (Physics.debugMode){console.log("rotTable: "+JSON.stringify(rotTable)+", centerPoint: "+JSON.stringify(centerPoint))}
+                
                 var rotMesh = Physics.util.coords2mesh(rotTable,this.character,false,false)
+                for (var i=0; i<rotTable.length; i++) {
+                    rotTable[i][0] -= rotMesh.x;
+                    rotTable[i][1] -= rotMesh.y;
+                }
+                this.rotatedPointTable = rotTable;
+                var rotMesh = Physics.util.coords2mesh(rotTable,this.character,false,false)
+
                 var opt = Physics.util.optimizeMesh(rotMesh.mesh);
                 this.mesh = opt.mesh;
+                this.calculate();
             }
             this.mesh = this.originalMesh;
             if (Physics.trimMeshOnShapeCreation) {
@@ -2388,8 +2400,8 @@ Physics.shape.prototype.calculate = Physics.shape3d.prototype.calculate = functi
         for (var i=0; i<this.pointTable.length; i++) {
             this.updPointTable[i] = [];
             if (this.pointTable[i].length == 2) {
-                this.updPointTable[i][0] = this.pointTable[i][0]+this.x;
-                this.updPointTable[i][1] = this.pointTable[i][1]+this.y;
+                this.updPointTable[i][0] = this.pointTable[i][0]+this.x+this.angularCenterpointOffset[0];
+                this.updPointTable[i][1] = this.pointTable[i][1]+this.y+this.angularCenterpointOffset[1];
             } else {
                 console.error("[PHYSICS_CALCULATE] Point table i:"+i+" has an invalid point length, not 2");
             }

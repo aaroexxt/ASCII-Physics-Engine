@@ -138,8 +138,6 @@ var Physics = { //Class to represent all main functions of physics engine
                 theta: 0 //rotation in radians
             }
 
-            this.angularCenterpointOffset = [0,0];
-
             this.collide = options.collide;
             if (typeof this.collide === "undefined") {
                 this.collide = true;
@@ -423,10 +421,20 @@ var Physics = { //Class to represent all main functions of physics engine
                 }
                 if (Physics.debugMode){console.log("rotTable: "+JSON.stringify(rotTable)+", centerPoint: "+JSON.stringify(centerPoint))}
                 
-                var rotMesh = Physics.util.coords2mesh(rotTable,this.character,false,false)
+                var minX = Infinity;
+                var minY = Infinity; //don't use coords2mesh to find min+max because its inefficient
+
                 for (var i=0; i<rotTable.length; i++) {
-                    rotTable[i][0] -= rotMesh.x;
-                    rotTable[i][1] -= rotMesh.y;
+                    if (rotTable[i][0] < minX) {
+                        minX = rotTable[i][0];
+                    }
+                    if (rotTable[i][1] < minY) {
+                        minY = rotTable[i][1];
+                    }
+                }
+                for (var i=0; i<rotTable.length; i++) {
+                    rotTable[i][0] -= minX;
+                    rotTable[i][1] -= minY;
                 }
                 this.rotatedPointTable = rotTable;
                 var rotMesh = Physics.util.coords2mesh(rotTable,this.character,false,false)
@@ -2014,7 +2022,11 @@ var Physics = { //Class to represent all main functions of physics engine
             return ainvolvedVertices[1];
         } else if (ainvolvedVertices.length === 2 && binvolvedVertices.length === 0) {
             return ainvolvedVertices[0];
-        } else if (binvolvedVertices.length === 2 && binvolvedVertices.length === 0) {
+        } else if (binvolvedVertices.length === 2 && ainvolvedVertices.length === 0) {
+            return binvolvedVertices[0];
+        } else if (ainvolvedVertices.length === 4 && binvolvedVertices.length === 0) {
+            return ainvolvedVertices[0];
+        } else if (binvolvedVertices.length === 4 && ainvolvedVertices.length === 0) {
             return binvolvedVertices[0];
         } else if (ainvolvedVertices.length === 1 && binvolvedVertices.length === 2) {
             return ainvolvedVertices[0];
@@ -2400,8 +2412,8 @@ Physics.shape.prototype.calculate = Physics.shape3d.prototype.calculate = functi
         for (var i=0; i<this.pointTable.length; i++) {
             this.updPointTable[i] = [];
             if (this.pointTable[i].length == 2) {
-                this.updPointTable[i][0] = this.pointTable[i][0]+this.x+this.angularCenterpointOffset[0];
-                this.updPointTable[i][1] = this.pointTable[i][1]+this.y+this.angularCenterpointOffset[1];
+                this.updPointTable[i][0] = this.pointTable[i][0]+this.x;
+                this.updPointTable[i][1] = this.pointTable[i][1]+this.y;
             } else {
                 console.error("[PHYSICS_CALCULATE] Point table i:"+i+" has an invalid point length, not 2");
             }

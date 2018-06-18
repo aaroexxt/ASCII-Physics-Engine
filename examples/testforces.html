@@ -17,7 +17,6 @@
             var box2 = new Physics.shape("rect",{height: 10, width: 10, physics: true, character: "*", x: 15, y: 60});
             var loop = new Physics.renderLoop({fps: 10, collision: false, onFrame: function(t){
                 var satTest = Physics.satTest(box,box2);
-                box2.rotation.theta = Physics.util.conversion.degrees2radian(t.frameCount*10)
 
             }},box,box2); //renderloop will render box
             box.controlGravity();

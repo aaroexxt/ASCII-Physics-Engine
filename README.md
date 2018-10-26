@@ -131,6 +131,6 @@ This loop will try render the shapes at 60fps.
 In addition, the loop.start() function at the end actually starts the loop. If you want to stop the loop, use ```loop.stop();```. To restart it, simply use ```loop.start();``` again.
 
 # Demos
-[Platformed](https://projects.aaronbecker.tech/code/platformedv5)
+[Platformed](https://aaronbecker.tech/projects/code/platformedv5)
 
 # Changelog
